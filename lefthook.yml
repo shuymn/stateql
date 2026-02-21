@@ -8,33 +8,33 @@ pre-commit:
   commands:
     # Format code - automatically fixes and stages changes
     fmt:
-      run: cargo +nightly fmt --all
+      run: cargo fmt --all
       stage_fixed: true # Automatically stage formatted files
       glob: "*.rs"
       tags: [formatting, style]
 
     # Run clippy for linting - fails on warnings
     clippy:
-      run: cargo clippy --all-features --all-targets -- -D warnings
+      run: cargo clippy --workspace --all-targets -- -D warnings
       glob: "*.rs"
       tags: [linting, quality]
       fail_text: |
         ❌ Clippy found issues that need to be fixed.
-        Run 'cargo clippy --all-features --all-targets -- -D warnings' to see details.
+        Run 'cargo clippy --workspace --all-targets -- -D warnings' to see details.
 
     # Quick syntax and type check
     check:
-      run: cargo check --all-features
+      run: cargo check --workspace
       glob: "*.rs"
       tags: [syntax, types]
       fail_text: "❌ Cargo check failed. Fix compilation errors before committing."
 
-    # Run fast unit tests only (skip slow integration tests)
-    test-unit:
-      run: cargo nextest run --cargo-quiet --lib --bins
+    # Run workspace tests
+    test:
+      run: cargo nextest run --workspace
       glob: "*.rs"
       tags: [testing]
-      fail_text: "❌ Unit tests failed. Fix failing tests before committing."
+      fail_text: "❌ Workspace tests failed. Fix failing tests before committing."
 
   # Skip conditions for pre-commit
   skip:
