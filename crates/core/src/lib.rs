@@ -32,7 +32,7 @@ pub fn plan_diff(desired: &[SchemaObject], current: &[SchemaObject]) -> Vec<Diff
 
 #[cfg(test)]
 mod tests {
-    use super::{plan_diff, Dialect, DiffOp, SchemaObject, Statement};
+    use super::{Dialect, DiffOp, SchemaObject, Statement, plan_diff};
 
     struct StubDialect;
 
