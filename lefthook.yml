@@ -8,7 +8,7 @@ pre-commit:
   commands:
     # Format code - automatically fixes and stages changes
     fmt:
-      run: cargo fmt --all
+      run: cargo +nightly-2026-02-20 fmt --all
       stage_fixed: true # Automatically stage formatted files
       glob: "*.rs"
       tags: [formatting, style]

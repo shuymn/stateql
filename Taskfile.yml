@@ -5,6 +5,7 @@ version: "3"
 
 vars:
   CARGO_FLAGS: --workspace --all-targets
+  FMT_TOOLCHAIN: nightly-2026-02-20
 
 tasks:
   # Default task - shows help
@@ -52,12 +53,12 @@ tasks:
   fmt:
     desc: Format code with cargo fmt
     cmds:
-      - cargo fmt --all
+      - cargo +{{.FMT_TOOLCHAIN}} fmt --all
 
   fmt-check:
     desc: Check code formatting
     cmds:
-      - cargo fmt --all --check
+      - cargo +{{.FMT_TOOLCHAIN}} fmt --all --check
 
   clippy:
     desc: Run clippy linter
