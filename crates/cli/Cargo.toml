@@ -1,0 +1,18 @@
+[package]
+name = "stateql-cli"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "stateql"
+path = "src/main.rs"
+
+[dependencies]
+stateql-core = { path = "../core" }
+stateql-dialect-postgres = { path = "../dialect-postgres" }
+stateql-dialect-mysql = { path = "../dialect-mysql" }
+stateql-dialect-sqlite = { path = "../dialect-sqlite" }
+stateql-dialect-mssql = { path = "../dialect-mssql" }
