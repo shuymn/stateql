@@ -1,0 +1,119 @@
+# Taskfile for stateql project
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  CARGO_FLAGS: --all-features --all-targets
+
+tasks:
+  # Default task - shows help
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list-all
+    silent: true
+
+  # ============================================================================
+  # Build Tasks
+  # ============================================================================
+
+  build:
+    desc: Build the project in debug mode
+    cmds:
+      - cargo build {{.CARGO_FLAGS}}
+    sources:
+      - src/**/*.rs
+      - Cargo.toml
+      - Cargo.lock
+
+  build-release:
+    desc: Build the project in release mode
+    cmds:
+      - cargo build --release {{.CARGO_FLAGS}}
+    sources:
+      - src/**/*.rs
+      - Cargo.toml
+      - Cargo.lock
+
+  # ============================================================================
+  # Test Tasks
+  # ============================================================================
+
+  test:
+    desc: Run tests
+    cmds:
+      - cargo nextest run --cargo-quiet
+
+  # ============================================================================
+  # Lint and Format Tasks
+  # ============================================================================
+
+  fmt:
+    desc: Format code with cargo fmt
+    cmds:
+      - cargo +nightly fmt --all
+
+  fmt-check:
+    desc: Check code formatting
+    cmds:
+      - cargo +nightly fmt --all --check
+
+  clippy:
+    desc: Run clippy linter
+    cmds:
+      - cargo clippy {{.CARGO_FLAGS}} -- -D warnings
+
+  lint:
+    desc: Run all linters and formatters
+    cmds:
+      - task: fmt-check
+      - task: clippy
+
+  # ============================================================================
+  # Development Tasks
+  # ============================================================================
+
+  watch:
+    desc: Watch for changes and rebuild
+    cmds:
+      - cargo watch -x build
+
+  run:
+    desc: Run the binary with arguments
+    vars:
+      ARGS: '{{.CLI_ARGS | default "--help"}}'
+    cmds:
+      - cargo run -- {{.ARGS}}
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - cargo clean
+      - rm -rf .task
+
+  # ============================================================================
+  # Documentation Tasks
+  # ============================================================================
+
+  docs:
+    desc: Generate documentation
+    cmds:
+      - cargo doc --no-deps --open
+
+  docs-all:
+    desc: Generate documentation with dependencies
+    cmds:
+      - cargo doc --open
+
+  # ============================================================================
+  # Utility Tasks
+  # ============================================================================
+
+  deps:
+    desc: Install development dependencies
+    cmds:
+      - cargo install cargo-watch
+      - cargo install cargo-expand
+      - cargo install cargo-nextest
+      - echo "Development dependencies installed"

@@ -1,0 +1,42 @@
+colors: true
+no_tty: false
+
+pre-commit:
+  parallel: false # Run commands in sequence for predictable output
+  piped: true # Pipe command output for cleaner display
+
+  commands:
+    # Format code - automatically fixes and stages changes
+    fmt:
+      run: cargo +nightly fmt --all
+      stage_fixed: true # Automatically stage formatted files
+      glob: "*.rs"
+      tags: [formatting, style]
+
+    # Run clippy for linting - fails on warnings
+    clippy:
+      run: cargo clippy --all-features --all-targets -- -D warnings
+      glob: "*.rs"
+      tags: [linting, quality]
+      fail_text: |
+        ❌ Clippy found issues that need to be fixed.
+        Run 'cargo clippy --all-features --all-targets -- -D warnings' to see details.
+
+    # Quick syntax and type check
+    check:
+      run: cargo check --all-features
+      glob: "*.rs"
+      tags: [syntax, types]
+      fail_text: "❌ Cargo check failed. Fix compilation errors before committing."
+
+    # Run fast unit tests only (skip slow integration tests)
+    test-unit:
+      run: cargo nextest run --cargo-quiet --lib --bins
+      glob: "*.rs"
+      tags: [testing]
+      fail_text: "❌ Unit tests failed. Fix failing tests before committing."
+
+  # Skip conditions for pre-commit
+  skip:
+    - merge: true
+    - rebase: true
