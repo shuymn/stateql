@@ -1,0 +1,12 @@
+add_index_to_existing_table:
+  current: |
+    CREATE TABLE users (
+      id bigint NOT NULL,
+      email text
+    );
+  desired: |
+    CREATE TABLE users (
+      id bigint NOT NULL,
+      email text,
+      created_at timestamptz
+    );

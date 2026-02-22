@@ -1,0 +1,6 @@
+basic_create_table:
+  current: |
+  desired: |
+    CREATE TABLE users (
+      id bigint NOT NULL
+    );
