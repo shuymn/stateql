@@ -534,7 +534,7 @@
         "task-38b",
         "task-22"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-40",

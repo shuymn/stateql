@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For offline YAML runner semantics, centralize `parse -> normalize -> diff -> generate` in one helper and evaluate `error` expectations outside that flow so flavor-mismatch handling can consistently treat any failure as expected.
 - For YAML flavor gating in testkit, keep `matches_flavor` as a pure function and route both `run_offline_test`/`run_online_test` through one expectation wrapper so non-matching flavors enforce sqldef semantics (`Err => skip`, `Ok => fail annotation`).
 - For YAML testcase schema loading, deserialize top-level `name -> TestCase` maps with `#[serde(default, deny_unknown_fields)]`, keep `enable_drop` as `Option<bool>` (tri-state), and map `serde_yaml` decode failures into core `ParseError::StatementConversion` with `SourceLocation` metadata.
 - For MSSQL generator semantics, keep SQL emission in a single op dispatcher that injects `Statement::BatchBoundary` between emitted SQL statements and route `sp_rename` rendering through dedicated table/column/index helpers so batch synchronization and rename targets stay deterministic.
@@ -780,4 +781,19 @@
 - **Learnings:**
   - Patterns discovered: Centralizing flavor mismatch handling in one wrapper keeps online/offline runner semantics aligned while preserving a pure matcher for focused tests.
   - Gotchas encountered: Keeping new runner APIs private to `yaml_runner` triggers dead_code warnings under workspace `-D warnings`; re-exporting through `stateql_testkit` avoids lint regressions.
+---
+## 2026-02-22 - task-39: Add Offline Runner
+- What was implemented: Implemented offline YAML runner execution in `yaml_runner` as direct `parse -> normalize -> diff -> generate_ddl` flow (no adapter/orchestrator dependency), added expected `up/down` SQL assertions, and enforced `error` expectation matching while wiring `enable_drop` into `DiffConfig` with `None => false` resolution.
+- Files changed: `crates/testkit/src/yaml_runner.rs`, `crates/testkit/tests/offline_runner_test.rs`, `crates/testkit/tests/support/offline_fake_dialect.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-testkit --test offline_runner_test`: PASS (3 passed, 0 failed).
+  - `rg -n "Orchestrator" crates/testkit/src/yaml_runner.rs crates/testkit/tests/offline_runner_test.rs`: PASS (0 matches).
+  - `offline_runner_test` verifies `error` expectation handling and `enable_drop` propagation for `None/Some(false)/Some(true)`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (173 passed, 0 failed, 3 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep expected SQL assertion logic in one helper (`assert_expected_sql`) and compare trimmed rendered SQL because renderer appends trailing newlines.
+  - Gotchas encountered: RED tests for runner behavior are easiest to stabilize with a fake dialect that records `generate_ddl` batches, so `enable_drop` wiring can be validated via emitted diff ops.
 ---
