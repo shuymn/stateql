@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For executor transaction grouping, scan `Statement` slices into contiguous transactional runs and execute each run through a single RAII `Transaction`, while keeping unsupported statement kinds as explicit fail-fast branches until their dedicated tasks land.
 - For circular FK fallback, preprocess dependency graphs in `crates/core/src/diff/cycle.rs` so only cycle-forming FK edges are split into `AddForeignKey`/`DropForeignKey` ops, while self-referential FKs stay embedded on `CreateTable`.
 - For DDL planning boundaries, keep `DdlPlanner`/`DdlPlan` in `crates/core/src/plan.rs` and route `DiffEngine` ordering through `build_ddl_plan(...)` so ordering rules stay single-sourced in Task 22 sorter logic.
 - For deterministic diff ordering, centralize sort logic in `crates/core/src/ordering.rs` with explicit priority/sub-priority enums and apply dependency topological sorting only inside the relevant priority groups (`CreateTable`, `CreateView`), while preserving original declaration order as the fallback tie-breaker.
@@ -408,4 +409,17 @@
 - **Learnings:**
   - Patterns discovered: Preserve declaration-order semantics for create/drop table passes by iterating table buckets in source order and keeping cycle-specific graph logic isolated from general ordering priorities.
   - Gotchas encountered: Drop-side cycle fallback can only produce `DropForeignKey` for named constraints (`ForeignKey.name: Some(...)`), so unnamed FKs remain drop-by-table behavior.
+---
+## 2026-02-22 - task-24: Implement Executor Transaction Grouping
+- What was implemented: Added a new `Executor` in core with `execute_plan` that groups consecutive transactional `Statement::Sql` items into a single transaction and commits once per group, plus helper-split transaction state flow (`execute_next_group` / `execute_transactional_group`) and a RED->GREEN grouping test using the shared in-memory fake adapter.
+- Files changed: `crates/core/src/executor.rs`, `crates/core/src/lib.rs`, `crates/core/tests/executor_grouping_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test executor_grouping_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (84 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Segment-based execution (contiguous transactional run -> one transaction) keeps grouping logic deterministic and avoids long-lived mutable-borrow state inside the executor loop.
+  - Gotchas encountered: Keeping a `Transaction<'_>` in an outer mutable state holder can complicate adapter borrow lifetimes; executing one transactional run at a time keeps borrow scopes simple.
 ---
