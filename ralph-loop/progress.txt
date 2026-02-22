@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For quote-aware YAML migration, convert `LegacyIgnoreQuotes` manifest entries from `skipped` to concrete `ported` case references only alongside real quote-sensitive fixtures and enforce the boundary with one dedicated regression suite (`yaml_quote_aware_regression_test`) plus shared SQL comparison helpers (`sql_matches_quote_aware`).
 - For YAML assertion migration gates, keep corpus per dialect/group under tests/<dialect>/assertions/<group>/ and compare manifest-vs-corpus through shared testkit helpers (manifest_ported_case_references/yaml_case_references) so count+coverage drift checks stay single-sourced.
 - For YAML migration gating, centralize idempotency corpus directory loading and manifest coverage validation in stateql_testkit helpers (load_test_cases_from_dir/load_idempotency_manifest_from_path/validate_idempotency_manifest_entries/idempotency_manifest_coverage) so matrix and manifest tests stay in lockstep.
 - For dialect YAML corpus integration tests, keep case files under `tests/<dialect>/idempotency/` and load them through `stateql_testkit::load_test_cases_from_path` so file I/O + YAML parse error shaping stays centralized in testkit.
@@ -894,4 +895,20 @@
 - **Learnings:**
   - Patterns discovered: Manifest gate tests stay maintainable when both idempotency and assertion suites share the same manifest case-reference and corpus set builders.
   - Gotchas encountered: PostgreSQL v1 parser normalization currently drops `NOT NULL` from this assertion shape, so expected SQL fixtures must align with normalized generator output instead of raw input text.
+---
+## 2026-02-22 - task-43d: Rewrite `legacy_ignore_quotes` Dependent Cases
+- What was implemented: Added quote-aware regression coverage in testkit (`yaml_quote_aware_regression_test`), introduced shared quote-aware SQL comparison helpers (`sql_matches_quote_aware`, `normalize_sql_for_quote_aware_comparison`), ported legacy quote-dependent YAML cases for all dialects (idempotency + assertion groups), and rewrote migration manifests so all `LegacyIgnoreQuotes` entries are now `ported` with concrete case references.
+- Files changed: `crates/testkit/src/yaml_runner.rs`, `crates/testkit/src/lib.rs`, `crates/testkit/tests/yaml_quote_aware_regression_test.rs`, `tests/migration/idempotency-manifest.yml`, `tests/migration/assertion-manifest.yml`, `tests/{postgres,sqlite,mysql,mssql}/idempotency/0011-quote-aware.yml`, `tests/{postgres,sqlite,mysql,mssql}/assertions/{tables,indexes,constraints,views}/0001-ported.yml`, `docs/2026-02-21-yaml-migration-status.md`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-testkit --test yaml_quote_aware_regression_test`: PASS (3 passed, 0 failed).
+  - YAML corpus `legacy_ignore_quotes` field removal gate: PASS (`yaml_corpus_does_not_use_legacy_ignore_quotes_field`).
+  - `docs/2026-02-21-yaml-migration-status.md` combined coverage (`idempotency + assertion`): PASS (`200 / 216 = 92.6%`, which is `>= 75%`).
+  - `R16` completion-gate quality tests: PASS (`cargo nextest run -p stateql-testkit` with `yaml_idempotency_matrix_test`, `yaml_migration_manifest_test`, `yaml_assertion_matrix_test`, `yaml_assertion_manifest_test`, `yaml_quote_aware_regression_test`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (197 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep quote-aware rewrites tied to manifest transitions (`skipped -> ported`) so migration accounting and corpus reality cannot diverge.
+  - Gotchas encountered: Backticks in shell-generated YAML blocks are command-substitution-sensitive; when writing MySQL fixtures, avoid unquoted heredoc interpolation for SQL containing `` `...` `` identifiers.
 ---
