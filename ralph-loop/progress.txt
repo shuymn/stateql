@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For local `cargo publish --dry-run` preflight with unpublished internal workspace deps, keep `.cargo/config.toml` `[patch.crates-io]` mappings for those crates so package verification resolves locally while preserving the real publish order.
 - For error-layering boundaries, keep `thiserror`-derived typed errors in `crates/core` and enforce no `anyhow`/`miette` usage with boundary tests, while routing CLI runtime failures through one presentation module that prefixes typed stage categories and adds operator context via `anyhow::Context` + `miette` rendering.
 - For dialect-contract stabilization, keep contract semantics executable by pairing `Dialect` rustdoc doctests with a maintained `crates/core/examples/dialect_template.rs` and enforce link correctness crate-wide via `#![deny(rustdoc::broken_intra_doc_links)]`.
 - For single-binary clap CLI mode handling, keep `--apply/--dry-run/--export` mutually exclusive, infer `Mode::DryRun` only when desired SQL input exists (`--file` or non-terminal stdin), and route all dialects through one `run_with_dialect` helper so `enable_drop` and output behavior stay consistent.
@@ -973,4 +974,19 @@
 - **Learnings:**
   - Patterns discovered: Centralizing typed-error-to-presentation conversion in one CLI module keeps runtime context/presentation concerns out of core while making category-preservation behavior testable as a single boundary.
   - Gotchas encountered: `miette::Report::new` requires `Diagnostic`; for `anyhow::Error` chains, build the report via `miette::miette!("{anyhow_error:#}")` after applying `anyhow::Context`.
+---
+## 2026-02-22 - task-45c: Prepare `core` and `testkit` for Publish
+- What was implemented: Finalized publish metadata for `stateql-core` and `stateql-testkit`, added internal dependency versions for testkit publish validation, added workspace `.cargo/config.toml` patch mappings for local publish dry-run resolution, and documented preflight + dry-run procedure in `docs/2026-02-21-publish-readiness.md`.
+- Files changed: `.cargo/config.toml`, `crates/core/Cargo.toml`, `crates/testkit/Cargo.toml`, `docs/2026-02-21-publish-readiness.md`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo publish --dry-run --allow-dirty -p stateql-core`: PASS (package + verify succeeded).
+  - `cargo publish --dry-run --allow-dirty -p stateql-testkit`: PASS (package + verify succeeded with local patch resolution).
+  - `docs/2026-02-21-publish-readiness.md` includes publish steps and preflight checks: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (207 passed, 0 failed, 6 skipped, 1 leaky).
+- **Learnings:**
+  - Patterns discovered: `cargo publish --dry-run` for unpublished internal workspace dependencies needs `.cargo/config.toml` `[patch.crates-io]` mappings, including dev-dependency crates referenced by publishable manifests.
+  - Gotchas encountered: In this loop flow the working tree is intentionally dirty before commit orchestration, so publish dry-runs require `--allow-dirty` to reach metadata/package verification.
 ---
