@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For YAML online runner semantics, keep the 8-step flow explicit (`apply current -> current idempotency -> forward diff/assert/apply -> desired idempotency -> reverse diff/assert/apply -> final idempotency`) and always compute online diffs against `adapter.export_schema()` plus live `schema_search_path` so `enable_drop`/reverse behavior reflects actual database state.
 - For offline YAML runner semantics, centralize `parse -> normalize -> diff -> generate` in one helper and evaluate `error` expectations outside that flow so flavor-mismatch handling can consistently treat any failure as expected.
 - For YAML flavor gating in testkit, keep `matches_flavor` as a pure function and route both `run_offline_test`/`run_online_test` through one expectation wrapper so non-matching flavors enforce sqldef semantics (`Err => skip`, `Ok => fail annotation`).
 - For YAML testcase schema loading, deserialize top-level `name -> TestCase` maps with `#[serde(default, deny_unknown_fields)]`, keep `enable_drop` as `Option<bool>` (tri-state), and map `serde_yaml` decode failures into core `ParseError::StatementConversion` with `SourceLocation` metadata.
@@ -796,4 +797,19 @@
 - **Learnings:**
   - Patterns discovered: Keep expected SQL assertion logic in one helper (`assert_expected_sql`) and compare trimmed rendered SQL because renderer appends trailing newlines.
   - Gotchas encountered: RED tests for runner behavior are easiest to stabilize with a fake dialect that records `generate_ddl` batches, so `enable_drop` wiring can be validated via emitted diff ops.
+---
+## 2026-02-22 - task-40: Add Online Runner
+- What was implemented: Implemented the YAML online runner with DESIGN §6.2 8-step execution (`apply current`, current idempotency check, forward diff/assert/apply, desired idempotency check, reverse diff/assert/apply, final idempotency check) using live adapter exports, core `Executor`, and online-specific version gating (`min_version`/`max_version`) that returns `TestResult::Skipped` when out of range. Added RED->GREEN online runner tests covering fake-adapter call-path/idempotency/error/enable_drop behavior plus ignored container-backed smoke tests for PostgreSQL/MySQL/MSSQL.
+- Files changed: `crates/testkit/src/yaml_runner.rs`, `crates/testkit/tests/online_runner_test.rs`, `crates/testkit/Cargo.toml`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-testkit --test online_runner_test`: PASS (5 passed, 0 failed, 3 skipped).
+  - `cargo nextest run -p stateql-testkit --test online_runner_test --run-ignored ignored-only`: PASS (3 passed, 0 failed, 5 skipped; env-gated early-return behavior validated in this sandbox).
+  - `online_runner_test` verifies online `error` expectation matching and `enable_drop` reflection against live exported schema state: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (178 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep online runner idempotency assertions separate from expected `up`/`down` SQL assertions so live-state drift is caught even when direction expectations are omitted.
+  - Gotchas encountered: Reusing support modules across integration test binaries can trigger `dead_code` warnings under workspace `-D warnings`; either split support modules by use case or intentionally exercise shared helpers in each binary.
 ---
