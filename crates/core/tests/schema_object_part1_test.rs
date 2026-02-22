@@ -23,7 +23,18 @@ fn schema_object_top_level_variants_are_constructible() {
     );
     let materialized_view = MaterializedView {
         name: qualified(Some("public"), "user_summary"),
-        columns: vec![Ident::unquoted("id")],
+        columns: vec![Column {
+            name: Ident::unquoted("id"),
+            data_type: DataType::BigInt,
+            not_null: true,
+            default: None,
+            identity: None,
+            generated: None,
+            comment: None,
+            collation: None,
+            renamed_from: None,
+            extra: BTreeMap::new(),
+        }],
         query: "SELECT id FROM users".to_string(),
         options: TableOptions::default(),
         renamed_from: None,

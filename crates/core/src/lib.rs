@@ -16,10 +16,15 @@ pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
 };
 pub use ir::{
-    BinaryOperator, Column, ColumnPosition, ComparisonOp, DataType, Expr, GeneratedColumn, Ident,
-    Identity, IndexColumn, IndexDef, IndexOwner, IsTest, Literal, MaterializedView, Partition,
-    PartitionBound, PartitionElement, PartitionStrategy, PrimaryKey, QualifiedName, SchemaObject,
-    Sequence, SetQuantifier, SubQuery, Table, TableOptions, UnaryOperator, Value, View, WindowSpec,
+    BinaryOperator, CheckConstraint, CheckOption, Column, ColumnPosition, Comment, CommentTarget,
+    ComparisonOp, DataType, Deferrable, Domain, EnumValuePosition, ExclusionConstraint,
+    ExclusionElement, Expr, Extension, ForeignKey, ForeignKeyAction, Function, FunctionParam,
+    FunctionParamMode, FunctionSecurity, GeneratedColumn, Ident, Identity, IndexColumn, IndexDef,
+    IndexOwner, IsTest, Literal, MaterializedView, NullsOrder, Partition, PartitionBound,
+    PartitionElement, PartitionStrategy, Policy, PolicyCommand, PrimaryKey, Privilege,
+    PrivilegeObject, PrivilegeOp, QualifiedName, SchemaDef, SchemaObject, Sequence, SetQuantifier,
+    SortOrder, SubQuery, Table, TableOptions, Trigger, TriggerEvent, TriggerForEach, TriggerTiming,
+    TypeDef, TypeKind, UnaryOperator, Value, View, ViewSecurity, Volatility, WindowSpec,
     float_total_cmp, value_total_eq,
 };
 pub use statement::Statement;
