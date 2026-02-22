@@ -69,6 +69,11 @@ auto_commit() {
     exit 2
   fi
 
+  # Stage quality-gate results immediately — fmt/clippy --fix may have updated
+  # crates/ source and Cargo.lock. This ensures the commit includes everything
+  # quality_gate produced, matching what lefthook will verify.
+  git add crates/ Cargo.lock
+
   # Read commit message written by the agent
   local code_msg="feat(core): implement task (auto-commit)"
   if [ -f "$commit_msg_file" ]; then
@@ -76,15 +81,8 @@ auto_commit() {
     rm -f "$commit_msg_file"
   fi
 
-  # 1. Commit code changes (crates/ + Cargo.lock)
-  local has_code_changes=false
-  if ! git diff --quiet -- crates/ Cargo.lock \
-     || [ -n "$(git ls-files --others --exclude-standard crates/)" ]; then
-    has_code_changes=true
-  fi
-
-  if [ "$has_code_changes" = true ]; then
-    git add crates/ Cargo.lock
+  # 1. Commit code changes (crates/ + Cargo.lock) — check staged changes
+  if ! git diff --cached --quiet -- crates/ Cargo.lock; then
     if ! git commit -m "$code_msg"; then
       echo "  [ralph] WARN: code commit failed, retrying with --no-gpg-sign..."
       if ! git commit --no-gpg-sign -m "$code_msg"; then
@@ -114,16 +112,6 @@ auto_commit() {
       fi
     fi
     echo "  [ralph] Tracking committed for ${task_id}"
-  fi
-
-  # 3. Safety net: commit Cargo.lock if it still has uncommitted changes
-  if ! git diff --quiet -- Cargo.lock; then
-    git add Cargo.lock
-    if ! git commit --no-gpg-sign -m "chore: update Cargo.lock"; then
-      echo "  [ralph] WARN: Cargo.lock commit failed (may be clean)"
-    else
-      echo "  [ralph] Cargo.lock committed (safety net)"
-    fi
   fi
 }
 
