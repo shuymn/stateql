@@ -28,7 +28,7 @@
       "title": "Add Version and ConnectionConfig",
       "phase": "A",
       "deps": ["task-2"],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-4",

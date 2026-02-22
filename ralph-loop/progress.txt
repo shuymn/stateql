@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Keep shared cross-crate contract types in a dedicated `src/*.rs` module and re-export them from `lib.rs` so integration tests and downstream crates can use stable root paths.
 - Task boundary tests live under `crates/core/tests/` and can enforce source-level boundaries by reading `src/*.rs` via `env!("CARGO_MANIFEST_DIR")`.
 - Keep early-phase core placeholders as minimal re-exported stubs in `crates/core/src/lib.rs` so downstream dialect crates continue compiling.
 - For early contract tasks, `#[path = "../src/*.rs"]` tests in `crates/core/tests/` are useful to lock internal type shapes before public re-exports are finalized.
@@ -40,4 +41,14 @@
 - **Learnings:**
   - Patterns discovered: Wrapper-layer tests should hit public crate exports (`stateql_core::{Error, Result, ...}`) to lock both type shape and re-export boundaries in one place.
   - Gotchas encountered: commit is still blocked in this sandbox because `.git/index.lock` cannot be created (`Operation not permitted`).
+---
+
+## 2026-02-22 - task-3: Add Version and ConnectionConfig
+- What was implemented: Added `Version { major, minor, patch }` and v1 `ConnectionConfig` (`host`, `port`, `user`, `password`, `database`, `socket`, `extra`) in new `config.rs`, re-exported both from `stateql_core`, and added RED->GREEN integration tests that construct and assert both types.
+- Files changed: `crates/core/src/config.rs`, `crates/core/src/lib.rs`, `crates/core/tests/config_types_test.rs`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test config_types_test`: PASS (2 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Contract-foundation tasks can use constructor-by-literal tests in `crates/core/tests/` to lock field names/types before trait signatures start depending on them.
+  - Gotchas encountered: commit remains blocked in this sandbox (`.git/index.lock` cannot be created), so the plan-specified commit command could not complete.
 ---
