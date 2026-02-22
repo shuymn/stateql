@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For MySQL export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` SQL in `table.options.extra` (`mysql.source_sql`) and let `to_sql` fall back to that hint, while keeping export catalog SQL centralized in `export_queries.rs` and adapter version gating fail-fast (`8.0+`).
 - For SQLite export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` statement in `table.options.extra` (`sqlite.source_sql`) during parse and let `to_sql` fall back to that hint when structured table fields are absent, while still returning explicit `GenerateError` for unsupported `SchemaObject` variants.
 - For `sqlparser-rs` dialect parse foundations (MySQL/SQLite/MSSQL), keep the pipeline as `AnnotationExtractor::extract -> parser -> fail-fast conversion loop -> attach_annotations` and derive `statement_index`/`source_sql`/`source_location.line` from a quote/comment-aware statement splitter so non-`pg_query` backends keep deterministic parse diagnostics.
 - For PostgreSQL residual expression equivalence, keep normalize() as the primary canonicalizer and scope policy matching to deterministic `Expr::Raw` spellings (casted integer literals, redundant outer parentheses, whitespace collapse), returning `false` for non-raw structural mismatches.
@@ -642,4 +643,23 @@
 - **Learnings:**
   - Patterns discovered: For SQLite task staging, keep export query constants in `export_queries.rs` and keep adapter/table SQL rendering deterministic with explicit ordering and statement terminators.
   - Gotchas encountered: `Dialect::to_sql` can be called on parse outputs before full structured conversion coverage exists, so source SQL hints are needed to avoid invalid empty-table renders during intermediate milestones.
+---
+## 2026-02-22 - task-34c: MySQL Full Normalize / to_sql / Adapter
+- What was implemented: Replaced MySQL dialect stubs with production `connect/export_schema/schema_search_path/server_version/normalize/to_sql` wiring; added a synchronous `mysql`-crate adapter with `8.0+` preflight version gating and deterministic schema export for tables/views/triggers; added MySQL normalize and renderer modules with explicit unsupported-variant errors; and added parser source-SQL/partition hints (`mysql.source_sql`, `mysql.partition_sql`) so parse-normalize-to_sql export round-trips stay stable while parser conversion remains table-first.
+- Files changed: `Cargo.lock`, `crates/dialect-mysql/Cargo.toml`, `crates/dialect-mysql/src/lib.rs`, `crates/dialect-mysql/src/adapter.rs`, `crates/dialect-mysql/src/export_queries.rs`, `crates/dialect-mysql/src/normalize.rs`, `crates/dialect-mysql/src/to_sql.rs`, `crates/dialect-mysql/src/parser.rs`, `crates/dialect-mysql/src/extra_keys.rs`, `crates/dialect-mysql/tests/dialect_surface_test.rs`, `crates/dialect-mysql/tests/adapter_export_schema_test.rs`, `crates/dialect-mysql/tests/normalize_lower_case_table_names_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-mysql --test dialect_surface_test`: PASS (3 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-mysql --test adapter_export_schema_test`: PASS (1 passed, 0 failed, 1 skipped).
+  - `cargo nextest run -p stateql-dialect-mysql --test normalize_lower_case_table_names_test`: PASS (1 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-mysql --test adapter_export_schema_test --run-ignored ignored-only`: PASS (1 passed, 0 failed, 1 skipped).
+  - `rg -n "pub async fn" crates/dialect-mysql/src`: PASS (0 hit).
+  - `dialect_surface_test` explicit `<8.0` rejection verification: PASS (`connect_rejects_mysql_versions_below_8_0`).
+  - `dialect_surface_test` supported variant (`Table/View/Index/Trigger/Function`) valid SQL + unsupported variant explicit `Error` coverage: PASS (`to_sql_supports_mysql_variants_and_rejects_unsupported_variants`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (134 passed, 0 failed, 2 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep MySQL adapter query text in `export_queries.rs` and pair parser-side `mysql.source_sql` hints with `to_sql` fallback to preserve export round-trips before full structured parser coverage.
+  - Gotchas encountered: `clippy::absurd_extreme_comparisons` fires if a `u16` minor-version check compares against `0`; use a major-version gate for `8.0+` while keeping the user-facing error message explicit.
 ---
