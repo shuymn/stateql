@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For SQLite generator rebuild semantics, batch table-structure diff ops per table and emit a six-step transactional `StatementContext::SqliteTableRebuild` sequence (`CreateShadowTable` -> `CopyData` -> `DropOldTable` -> `RenameShadowTable` -> `RecreateIndexes` -> `RecreateTriggers`) so failures surface precise rebuild-step diagnostics and rollback stays atomic.
 - For non-PostgreSQL residual expression equivalence, wire explicit custom `equivalence_policy()` implementations that canonicalize only `Expr::Raw` integer-cast literals + redundant outer parentheses + whitespace collapse, keep `is_equivalent_custom_type` strict, and enforce symmetry/stability with `verify_equivalence_policy_contract`.
 - For MSSQL export/to_sql stability while parser conversion remains table-first, persist original `CREATE TABLE` SQL in `table.options.extra` (`mssql.source_sql`) and let `to_sql` fall back to that hint, while keeping adapter APIs synchronous with fail-fast SQL Server `2019+` version gating.
 - For MySQL export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` SQL in `table.options.extra` (`mysql.source_sql`) and let `to_sql` fall back to that hint, while keeping export catalog SQL centralized in `export_queries.rs` and adapter version gating fail-fast (`8.0+`).
@@ -698,4 +699,19 @@
 - **Learnings:**
   - Patterns discovered: Keep non-PostgreSQL equivalence policies narrowly scoped to residual raw-expression canonicalization and preserve strict behavior for structural expression mismatches.
   - Gotchas encountered: In this sandbox, cargo operations are more reliable with `CARGO_HOME=/tmp/cargo` to avoid cache permission issues.
+---
+## 2026-02-22 - task-35: SQLite Full Generator (Rebuild + Unsupported-Op Contract)
+- What was implemented: Added a SQLite `generate_ddl` implementation in `generator.rs` with simple ALTER coverage (`AddColumn` append, `RenameTable`, `RenameColumn`), per-table rebuild batching for structure-changing ops (`AlterColumn`, `DropColumn`, FK/check/exclusion/PK diffs), and explicit fail-fast unsupported-op behavior with variant-tagged `GenerateError`. Rebuild output now emits transactional SQL statements with `StatementContext::SqliteTableRebuild` for all six rebuild steps.
+- Files changed: `crates/dialect-sqlite/src/generator.rs`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-sqlite/tests/rebuild_generator_test.rs`, `crates/dialect-sqlite/tests/generator_contract_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-sqlite --test rebuild_generator_test`: PASS (3 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-sqlite --test generator_contract_test`: PASS (2 passed, 0 failed).
+  - `generator_contract_test` exhaustively classifies all `DiffOp` variants via `all_diffop_variants()` and fails on support-contract drift: PASS.
+  - Quality gates:
+    - `CARGO_HOME=/tmp/cargo cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo nextest run --workspace`: PASS (153 passed, 0 failed, 3 skipped).
+- **Learnings:**
+  - Patterns discovered: Rebuild-step context should be attached to every emitted SQL statement (including no-op rebuild tail steps) so executor error propagation can reliably pinpoint failing rebuild phases.
+  - Gotchas encountered: SQLite rebuild generation currently depends on diff payload richness; when full target table shape is unavailable in a batch, the safest fallback is shadow-table creation via `CREATE TABLE ... AS SELECT ... WHERE 0` plus fail-fast handling for unsupported SQL surface.
 ---
