@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For CLI dialect feature gating, keep dialect crates as optional `dep:` feature targets and derive accepted subcommands/usage text from one cfg-driven enabled-dialect list so disabled dialect builds cannot reference unavailable crates.
 - For quote-aware YAML migration, convert `LegacyIgnoreQuotes` manifest entries from `skipped` to concrete `ported` case references only alongside real quote-sensitive fixtures and enforce the boundary with one dedicated regression suite (`yaml_quote_aware_regression_test`) plus shared SQL comparison helpers (`sql_matches_quote_aware`).
 - For YAML assertion migration gates, keep corpus per dialect/group under tests/<dialect>/assertions/<group>/ and compare manifest-vs-corpus through shared testkit helpers (manifest_ported_case_references/yaml_case_references) so count+coverage drift checks stay single-sourced.
 - For YAML migration gating, centralize idempotency corpus directory loading and manifest coverage validation in stateql_testkit helpers (load_test_cases_from_dir/load_idempotency_manifest_from_path/validate_idempotency_manifest_entries/idempotency_manifest_coverage) so matrix and manifest tests stay in lockstep.
@@ -911,4 +912,18 @@
 - **Learnings:**
   - Patterns discovered: Keep quote-aware rewrites tied to manifest transitions (`skipped -> ported`) so migration accounting and corpus reality cannot diverge.
   - Gotchas encountered: Backticks in shell-generated YAML blocks are command-substitution-sensitive; when writing MySQL fixtures, avoid unquoted heredoc interpolation for SQL containing `` `...` `` identifiers.
+---
+## 2026-02-22 - task-43e: Add Cargo Feature Gates for Dialect Inclusion
+- What was implemented: Added Cargo feature gates for dialect selection in `stateql-cli` with `default = ["mysql", "postgres", "sqlite"]`, mapped each dialect feature to optional `dep:` dependencies, and updated bootstrap CLI dialect registration/usage output to expose only feature-enabled dialect subcommands.
+- Files changed: `Cargo.toml`, `crates/cli/Cargo.toml`, `crates/cli/src/main.rs`, `crates/cli/tests/feature_gate_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-cli --test feature_gate_test`: PASS (2 passed, 0 failed).
+  - `cargo check -p stateql-cli --no-default-features --features mssql`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (199 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Integration tests can lock default-feature CLI exposure by asserting usage text and disabled-subcommand exit behavior, which catches accidental ungated dialect registration early.
+  - Gotchas encountered: Clippy’s `const_is_empty` and `vec_init_then_push` lints trigger quickly on cfg-driven dialect lists under `-D warnings`; a cfg-gated `vec![...]` initializer keeps the feature table explicit while remaining lint-clean.
 ---
