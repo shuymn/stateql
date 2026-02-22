@@ -1845,6 +1845,9 @@ dependencies = [
  "serde",
  "serde_yaml",
  "stateql-core",
+ "stateql-dialect-mssql",
+ "stateql-dialect-mysql",
+ "stateql-dialect-postgres",
 ]
 
 [[package]]
