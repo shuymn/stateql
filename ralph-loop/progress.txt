@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For SQLite export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` statement in `table.options.extra` (`sqlite.source_sql`) during parse and let `to_sql` fall back to that hint when structured table fields are absent, while still returning explicit `GenerateError` for unsupported `SchemaObject` variants.
 - For `sqlparser-rs` dialect parse foundations (MySQL/SQLite/MSSQL), keep the pipeline as `AnnotationExtractor::extract -> parser -> fail-fast conversion loop -> attach_annotations` and derive `statement_index`/`source_sql`/`source_location.line` from a quote/comment-aware statement splitter so non-`pg_query` backends keep deterministic parse diagnostics.
 - For PostgreSQL residual expression equivalence, keep normalize() as the primary canonicalizer and scope policy matching to deterministic `Expr::Raw` spellings (casted integer literals, redundant outer parentheses, whitespace collapse), returning `false` for non-raw structural mismatches.
 - For PostgreSQL adapter/export contracts, centralize catalog SQL in `export_queries.rs` and keep `connect()` fail-fast by validating `SHOW server_version` (`13+`) plus parsing `SHOW search_path` once into normalized path entries (drop `$user`/`pg_catalog`/`pg_temp*`) before diff wiring.
@@ -624,4 +625,21 @@
 - **Learnings:**
   - Patterns discovered: In `sqlparser-rs` dialects, keep conversion helpers dialect-local but standardize parse-error wrapping/signature (`statement_conversion_error`) so fail-fast metadata remains uniform across backends.
   - Gotchas encountered: `sqlparser-rs` does not provide stable per-statement source offsets for this pipeline, so a local quote/comment-aware statement splitter is needed to populate deterministic `SourceLocation.line` values.
+---
+## 2026-02-22 - task-34b: SQLite Full Normalize / to_sql / Adapter
+- What was implemented: Replaced SQLite dialect stubs with production `connect/export_schema/schema_search_path/server_version/normalize/to_sql` wiring; added a synchronous `rusqlite` adapter with `3.35+` preflight version gating and deterministic schema export for table/view/index/trigger; added SQLite normalize and renderer modules with explicit unsupported-variant errors; and added parser source-SQL hints (`sqlite.source_sql`) so parse-normalize-to_sql export round-trips stay stable while parser conversion remains table-focused.
+- Files changed: `Cargo.lock`, `crates/dialect-sqlite/Cargo.toml`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-sqlite/src/adapter.rs`, `crates/dialect-sqlite/src/export_queries.rs`, `crates/dialect-sqlite/src/normalize.rs`, `crates/dialect-sqlite/src/to_sql.rs`, `crates/dialect-sqlite/src/extra_keys.rs`, `crates/dialect-sqlite/src/parser.rs`, `crates/dialect-sqlite/tests/adapter_export_schema_test.rs`, `crates/dialect-sqlite/tests/dialect_surface_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-sqlite --test dialect_surface_test`: PASS (3 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-sqlite --test adapter_export_schema_test`: PASS (2 passed, 0 failed).
+  - `rg -n "pub async fn" crates/dialect-sqlite/src`: PASS (0 hit).
+  - `dialect_surface_test` explicit `<3.35` rejection verification: PASS (`connect_rejects_sqlite_versions_below_3_35`).
+  - `dialect_surface_test` supported variant (`Table/View/Index/Trigger`) valid SQL + unsupported variant explicit `Error` coverage: PASS (`to_sql_supports_sqlite_variants_and_rejects_unsupported_variants`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (129 passed, 0 failed, 1 skipped).
+- **Learnings:**
+  - Patterns discovered: For SQLite task staging, keep export query constants in `export_queries.rs` and keep adapter/table SQL rendering deterministic with explicit ordering and statement terminators.
+  - Gotchas encountered: `Dialect::to_sql` can be called on parse outputs before full structured conversion coverage exists, so source SQL hints are needed to avoid invalid empty-table renders during intermediate milestones.
 ---
