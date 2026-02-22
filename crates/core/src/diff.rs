@@ -1,2 +1,4 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiffOp;
+pub mod engine;
+pub mod types;
+
+pub use types::{ColumnChange, DiffOp, DomainChange, SequenceChange, TypeChange};

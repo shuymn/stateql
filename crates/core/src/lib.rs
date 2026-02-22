@@ -16,7 +16,7 @@ pub use config::{ConnectionConfig, Version};
 pub use dialect::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, Dialect, EquivalencePolicy,
 };
-pub use diff::DiffOp;
+pub use diff::{ColumnChange, DiffOp, DomainChange, SequenceChange, TypeChange};
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
 };
