@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For dialect YAML corpus integration tests, keep case files under `tests/<dialect>/idempotency/` and load them through `stateql_testkit::load_test_cases_from_path` so file I/O + YAML parse error shaping stays centralized in testkit.
 - For Safety S6-S11 regressions, keep a dedicated core sweep test (`safety_s6_s11_test`) for cross-module diff/executor guarantees and pair SQLite atomicity with a shared fixture module (`tests/support/sqlite_atomicity_fixture.rs`) reused across integration tests.
 - For cross-module safety regression coverage, keep one dedicated `crates/core/tests/safety_*.rs` suite that reuses shared fake adapter/dialect fixtures and asserts both typed error payloads and side-effect counters (`begin/commit/rollback`, generated ops, executed SQL) so fail-fast/no-silent-drop guarantees stay explicit.
 - For YAML online runner semantics, keep the 8-step flow explicit (`apply current -> current idempotency -> forward diff/assert/apply -> desired idempotency -> reverse diff/assert/apply -> final idempotency`) and always compute online diffs against `adapter.export_schema()` plus live `schema_search_path` so `enable_drop`/reverse behavior reflects actual database state.
@@ -841,4 +842,17 @@
 - **Learnings:**
   - Patterns discovered: Consolidating cross-cutting safety checks into one task-scoped regression suite prevents behavior drift across diff/executor modules while keeping existing per-feature tests focused.
   - Gotchas encountered: Reusable integration-test fixtures that call trait methods (for example `Dialect::connect`) must import the trait explicitly in the fixture module or method resolution fails at compile time.
+---
+## 2026-02-22 - task-43: Port PostgreSQL YAML Seed Cases
+- What was implemented: Added PostgreSQL YAML seed corpus files (`0001-basic-create`, `0002-add-index`) and a dedicated `yaml_seed_test` that loads each YAML file and executes every testcase through `run_offline_test`; added `stateql-testkit` path-based YAML loader (`load_test_cases_from_path`) and wired the new Postgres test to use it.
+- Files changed: `crates/dialect-postgres/Cargo.toml`, `crates/dialect-postgres/tests/yaml_seed_test.rs`, `crates/testkit/src/yaml_runner.rs`, `crates/testkit/src/lib.rs`, `tests/postgres/idempotency/0001-basic-create.yml`, `tests/postgres/idempotency/0002-add-index.yml`, `Cargo.lock`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-postgres --test yaml_seed_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (190 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Dialect-level YAML corpus tests are easier to scale when file loading is centralized in testkit and per-dialect tests only handle path enumeration + result assertions.
+  - Gotchas encountered: Current PostgreSQL parser scope is still `CREATE TABLE`-only for this flow, so standalone `CREATE INDEX` seed SQL fails parse-time in offline runner and must be deferred to later parser-expansion tasks.
 ---
