@@ -14,3 +14,8 @@ path = "src/lib.rs"
 stateql-core = { path = "../core" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_yaml = "0.9.34"
+
+[dev-dependencies]
+stateql-dialect-postgres = { path = "../dialect-postgres" }
+stateql-dialect-mysql = { path = "../dialect-mysql" }
+stateql-dialect-mssql = { path = "../dialect-mssql" }
