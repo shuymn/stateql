@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use stateql_core::{CoreError, CoreResult};
+use stateql_core::{DiffError, Error, Result};
 
 fn read_source(file_name: &str) -> String {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -40,10 +40,14 @@ fn bootstrap_symbols_are_removed() {
 }
 
 #[test]
-fn core_error_and_result_are_public() {
-    let result: CoreResult<()> = Ok(());
+fn top_level_error_and_result_are_public() {
+    let result: Result<()> = Ok(());
     assert!(result.is_ok());
 
-    let error = CoreError::new("core error");
-    assert_eq!(error.to_string(), "core error");
+    let error: Error = DiffError::ObjectComparison {
+        target: "users".to_string(),
+        operation: "missing owner".to_string(),
+    }
+    .into();
+    assert!(matches!(error, Error::Diff(_)));
 }

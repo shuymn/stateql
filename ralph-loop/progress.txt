@@ -2,6 +2,7 @@
 - Task boundary tests live under `crates/core/tests/` and can enforce source-level boundaries by reading `src/*.rs` via `env!("CARGO_MANIFEST_DIR")`.
 - Keep early-phase core placeholders as minimal re-exported stubs in `crates/core/src/lib.rs` so downstream dialect crates continue compiling.
 - For early contract tasks, `#[path = "../src/*.rs"]` tests in `crates/core/tests/` are useful to lock internal type shapes before public re-exports are finalized.
+- Promote stage errors through a single `stateql_core::Error` + `stateql_core::Result<T>` boundary, then propagate that alias through core traits and dialect stubs to keep signatures consistent.
 
 ---
 
@@ -27,4 +28,16 @@
 - **Learnings:**
   - Patterns discovered: Boundary-phase error contracts can be pinned with integration tests that include source modules directly while public exports are still in flux.
   - Gotchas encountered: `thiserror` download failed in this sandbox (`index.crates.io` DNS resolution error), so manual `Display`/`Error` impls were used; `git commit` still fails because `.git/index.lock` cannot be created.
+---
+
+## 2026-02-22 - task-2: Add Top-Level Error and Result<T>
+- What was implemented: Added top-level `Error` (`Parse`, `Diff`, `Generate`, `Execute`) with `From` conversions and `Result<T>` alias in core; exported the typed errors and alias via `stateql_core`; added RED->GREEN wrapper tests; refactored core public trait signatures (`Dialect`, `DatabaseAdapter`) and all dialect stub implementations to return `Result<T>`.
+- Files changed: `crates/core/src/error.rs`, `crates/core/src/lib.rs`, `crates/core/src/adapter.rs`, `crates/core/src/dialect.rs`, `crates/core/tests/error_wrap_test.rs`, `crates/core/tests/bootstrap_boundary_test.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-mysql/src/lib.rs`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-mssql/src/lib.rs`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test error_wrap_test`: PASS (2 passed, 0 failed).
+  - `rg -n "fn (parse|generate_ddl|export_schema|execute).*-> Result<" crates/core/src/{dialect.rs,adapter.rs}`: PASS (core public API returns `Result<T>`).
+  - Additional verification: `cargo nextest run -p stateql-core` PASS (6 passed, 0 failed), `cargo check` PASS.
+- **Learnings:**
+  - Patterns discovered: Wrapper-layer tests should hit public crate exports (`stateql_core::{Error, Result, ...}`) to lock both type shape and re-export boundaries in one place.
+  - Gotchas encountered: commit is still blocked in this sandbox because `.git/index.lock` cannot be created (`Operation not permitted`).
 ---

@@ -1,6 +1,6 @@
-use crate::{CoreResult, Statement};
+use crate::{Result, Statement};
 
 pub trait DatabaseAdapter {
-    fn export_schema(&self) -> CoreResult<String>;
-    fn execute(&mut self, statement: &Statement) -> CoreResult<()>;
+    fn export_schema(&self) -> Result<String>;
+    fn execute(&mut self, statement: &Statement) -> Result<()>;
 }

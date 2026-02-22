@@ -131,30 +131,63 @@ impl StdError for ExecutionError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 #[allow(dead_code)]
-pub struct CoreError {
-    message: String,
+pub enum Error {
+    Parse(ParseError),
+    Diff(DiffError),
+    Generate(GenerateError),
+    Execute(ExecutionError),
 }
 
-impl CoreError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Parse(error) => write!(f, "parse error: {error}"),
+            Self::Diff(error) => write!(f, "diff error: {error}"),
+            Self::Generate(error) => write!(f, "generate error: {error}"),
+            Self::Execute(error) => write!(f, "execute error: {error}"),
         }
     }
 }
 
-impl fmt::Display for CoreError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
+impl StdError for Error {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match self {
+            Self::Parse(error) => Some(error),
+            Self::Diff(error) => Some(error),
+            Self::Generate(error) => Some(error),
+            Self::Execute(error) => Some(error),
+        }
     }
 }
 
-impl std::error::Error for CoreError {}
+impl From<ParseError> for Error {
+    fn from(value: ParseError) -> Self {
+        Self::Parse(value)
+    }
+}
+
+impl From<DiffError> for Error {
+    fn from(value: DiffError) -> Self {
+        Self::Diff(value)
+    }
+}
+
+impl From<GenerateError> for Error {
+    fn from(value: GenerateError) -> Self {
+        Self::Generate(value)
+    }
+}
+
+impl From<ExecutionError> for Error {
+    fn from(value: ExecutionError) -> Self {
+        Self::Execute(value)
+    }
+}
 
 #[allow(dead_code)]
-pub type CoreResult<T> = Result<T, CoreError>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 fn format_location(location: Option<&SourceLocation>) -> String {
     match location {

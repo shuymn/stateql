@@ -21,7 +21,7 @@
       "title": "Add Top-Level Error and Result<T>",
       "phase": "A",
       "deps": ["task-1"],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-3",
