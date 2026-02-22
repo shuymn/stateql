@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For injected semantic-equivalence hooks, keep strict equality as the first-stage gate via a shared fallback helper (`strict_or_policy`) and enforce policy purity assumptions with a reusable contract validator (symmetry + repeated-call stability checks).
 - For dialect-specific `Column.extra` metadata, define key constants in core (`stateql_core::extra_keys::<dialect>::*`) and consume those constants in fixtures/tests to prevent parser/generator key drift before dialect implementations land.
 - For wide contract enums under workspace `-D warnings`, pair an exhaustive variant-tag `match` helper with an `all_*_variants()` fixture list; this catches new-variant drift at compile time, and if `clippy::large_enum_variant` fires, box only the largest payload field instead of suppressing the lint.
 - For fail-fast rename annotation attachment, first resolve every line->target binding into immutable operations, then mutate IR objects in a second pass so orphan annotations cannot partially set `renamed_from`.
@@ -215,4 +216,18 @@
 - **Learnings:**
   - Patterns discovered: For representability gates that precede parser implementation, use construction-only tests against public IR/DiffOp exports and keep reusable constructors in `crates/core/tests/support/*` so later dialect crates can import the same fixtures.
   - Gotchas encountered: If constants are introduced only in private modules, integration tests cannot consume them from `stateql_core`; they must be re-exported from `lib.rs` to keep constant usage consistent across crate boundaries.
+---
+
+## 2026-02-22 - task-14: Add `EquivalencePolicy` and `DiffConfig`
+- What was implemented: Added `crates/core/src/diff/policy.rs` with full `EquivalencePolicy` contract (`is_equivalent_expr`, `is_equivalent_custom_type`), `DefaultEquivalencePolicy`, `DEFAULT_EQUIVALENCE_POLICY`, `DiffConfig` (`enable_drop`, `schema_search_path`, `Arc<dyn EquivalencePolicy>`), strict-eq fallback helpers (`exprs_equivalent`, `custom_types_equivalent`), and a reusable contract validator (`verify_equivalence_policy_contract`) that detects non-symmetric and non-stable policies; wired policy exports through `diff.rs` and `lib.rs`, and updated `Dialect` to consume the policy contract from `diff`.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/policy.rs`, `crates/core/src/dialect.rs`, `crates/core/src/lib.rs`, `crates/core/tests/equivalence_policy_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test equivalence_policy_test`: PASS (3 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (37 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Contract-check helpers are easiest to keep deterministic when they evaluate both forward/backward symmetry and repeated-call stability per case index, returning a typed violation enum for focused assertions.
+  - Gotchas encountered: Moving shared contracts from `dialect.rs` into `diff` requires synchronized re-export updates in `lib.rs`; otherwise integration tests fail with unresolved root imports before behavior tests run.
 ---
