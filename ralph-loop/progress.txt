@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For expanding `SchemaObject` diff coverage incrementally, keep `match SchemaObject` paths exhaustive (no wildcard arms) and route not-yet-supported variants through explicit `DiffError` fail-fast checks.
 - For staged diff-engine development, keep `DiffEngine::diff` split into explicit phases (`compare_*` first, then a dedicated resolve/order hook) so name resolution and ordering tasks can evolve without coupling to object-diff logic.
 - For injected semantic-equivalence hooks, keep strict equality as the first-stage gate via a shared fallback helper (`strict_or_policy`) and enforce policy purity assumptions with a reusable contract validator (symmetry + repeated-call stability checks).
 - For dialect-specific `Column.extra` metadata, define key constants in core (`stateql_core::extra_keys::<dialect>::*`) and consume those constants in fixtures/tests to prevent parser/generator key drift before dialect implementations land.
@@ -247,3 +248,20 @@
   - Patterns discovered: Splitting baseline diff into object-kind helpers (`compare_table`, `compare_columns`, `compare_indexes`) keeps Task 17+ name resolution and Task 22 ordering work additive instead of requiring rewrites.
   - Gotchas encountered: Baseline comparison currently rejects non-table/index object kinds with `DiffError` to avoid silent omissions; Task 15b needs to expand this coverage deliberately rather than weakening fail-fast behavior.
 ---
+
+## 2026-02-22 - task-15b: Implement Remaining SchemaObject Comparison
+- What was implemented: Added remaining-object diff comparison coverage for `View`, `MaterializedView`, `Sequence`, `Trigger`, `Function`, `Type`, `Domain`, `Extension`, `Schema`, `Comment`, and `Policy`, kept `Privilege` as explicit fail-fast unsupported, and added pre-diff sequence duplicate invariant validation for explicit `Sequence` vs implicit identity sequence overlap on both desired/current sides.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff/compare_remaining.rs`, `crates/core/tests/diff_remaining_objects_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test diff_remaining_objects_test`: PASS (6 passed, 0 failed).
+  - `SchemaObject` comparison routing uses exhaustive `match` handling in diff paths (no wildcard default for variant dispatch), preserving compile-time drift detection when enum variants change: PASS.
+  - Duplicate sequence invariant violation (`Sequence` + identity implicit sequence overlap) verified for desired/current sides in `diff_remaining_objects_test`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (49 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: For staged diff growth, isolate newly added object-family comparisons into a dedicated module and call it from `DiffEngine::compare_objects` so table/index baseline logic stays stable while enabling per-kind expansion.
+  - Gotchas encountered: `DropSchema` uses unqualified `QualifiedName { schema: None, name }`, so tests should not assume default schema qualification for schema-drop ops.
+---
+
