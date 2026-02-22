@@ -11,5 +11,6 @@ name = "stateql_dialect_postgres"
 path = "src/lib.rs"
 
 [dependencies]
+postgres = "0.19.12"
 pg_query = "6.1.1"
 stateql-core = { path = "../core" }
