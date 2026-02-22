@@ -1,5 +1,6 @@
 pub mod compare;
 mod compare_remaining;
+mod enable_drop;
 pub mod engine;
 mod name_resolution;
 mod partition;
@@ -8,6 +9,7 @@ mod rename;
 pub mod types;
 
 pub use compare::DiffEngine;
+pub use enable_drop::{DiffDiagnostics, DiffOutcome, SkippedOpDiagnostic, SkippedOpKind};
 pub use policy::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, DiffConfig, EquivalencePolicy,
     EquivalencePolicyContractError, custom_types_equivalent, exprs_equivalent,

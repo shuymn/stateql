@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
     compare_remaining::{compare_remaining_objects, validate_sequence_invariant},
+    enable_drop::{DiffDiagnostics, DiffOutcome},
     name_resolution::{
         IdentKey, IndexLookupKey, IndexOwnerKey, QualifiedNameKey, resolve_index_match,
         resolve_qualified_name_match,
@@ -32,6 +33,25 @@ impl DiffEngine {
     ) -> Result<Vec<DiffOp>> {
         let compare_ops = self.compare_objects(desired, current, config)?;
         self.resolve_and_order(compare_ops, config)
+    }
+
+    pub fn diff_with_diagnostics(
+        &self,
+        desired: &[SchemaObject],
+        current: &[SchemaObject],
+        config: &DiffConfig,
+    ) -> Result<DiffOutcome> {
+        let ops = self.diff(desired, current, config)?;
+        let diagnostics = if config.enable_drop {
+            DiffDiagnostics::default()
+        } else {
+            let mut with_drop_enabled = config.clone();
+            with_drop_enabled.enable_drop = true;
+            let full_ops = self.diff(desired, current, &with_drop_enabled)?;
+            DiffDiagnostics::from_enable_drop(&full_ops, &ops)
+        };
+
+        Ok(DiffOutcome::new(ops, diagnostics))
     }
 
     fn compare_objects(
