@@ -1,4 +1,5 @@
 mod adapter;
+mod equivalence;
 mod export_queries;
 mod extra_keys;
 mod normalize;
@@ -6,8 +7,8 @@ mod parser;
 mod to_sql;
 
 use stateql_core::{
-    ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, GenerateError, Ident, Result, SchemaObject,
-    Statement,
+    ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, EquivalencePolicy, GenerateError, Ident,
+    Result, SchemaObject, Statement,
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -49,6 +50,10 @@ impl Dialect for MysqlDialect {
 
     fn normalize(&self, obj: &mut SchemaObject) {
         normalize::normalize_object(obj);
+    }
+
+    fn equivalence_policy(&self) -> &'static dyn EquivalencePolicy {
+        &equivalence::MYSQL_EQUIVALENCE_POLICY
     }
 
     fn quote_ident(&self, ident: &Ident) -> String {
