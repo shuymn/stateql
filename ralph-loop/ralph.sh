@@ -70,9 +70,9 @@ auto_commit() {
   fi
 
   # Stage quality-gate results immediately — fmt/clippy --fix may have updated
-  # crates/ source and Cargo.lock. This ensures the commit includes everything
-  # quality_gate produced, matching what lefthook will verify.
-  git add crates/ Cargo.lock
+  # crates/ source, Cargo.lock, docs/, and tests/. This ensures the commit
+  # includes everything quality_gate produced, matching what lefthook will verify.
+  git add crates/ Cargo.lock docs/ tests/
 
   # Read commit message written by the agent
   local code_msg="feat(core): implement task (auto-commit)"
