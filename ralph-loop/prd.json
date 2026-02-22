@@ -337,7 +337,7 @@
         "task-24",
         "task-28"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-30",

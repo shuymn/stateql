@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For orchestrator dry-run wiring, keep `DiffEngine::diff_with_diagnostics(...)` as the single diff entrypoint and convert `DiffDiagnostics.skipped_ops` into renderer comment lines (`-- Skipped: <kind>`) before appending statement rendering so suppression visibility stays consistent.
 - For dry-run statement rendering, keep `Renderer` as the single statement-to-text boundary: emit each SQL statement with a trailing newline, map `Statement::BatchBoundary` through `Dialect::batch_separator()`, and normalize separator newlines so dialects can return either `GO` or `GO\n` safely.
 - For executor failure diagnostics, map adapter and transaction errors through a shared statement-error builder that merges current statement metadata with inherited execution location/context, and box statement_context in ExecutionError to avoid clippy result_large_err regressions.
 - For executor `BatchBoundary` semantics, treat `Statement::BatchBoundary` as a cursor-advance no-op both inside transactional scans and top-level dispatch so `T,T,B,T` stays in one transaction while preserving sync-point ordering.
@@ -479,4 +480,20 @@
 - **Learnings:**
   - Patterns discovered: Keep renderer output deterministic by making newline handling explicit for both SQL lines and dialect separators.
   - Gotchas encountered: Dialect separators may already include a trailing newline; renderer-level normalization avoids duplicate blank lines in dry-run output.
+---
+## 2026-02-22 - task-29: Implement Orchestrator `--dry-run` and `--apply`
+- What was implemented: Added core orchestrator flow with `Mode::{Apply,DryRun}` and a single `run(...)` entrypoint that performs parse -> normalize -> diff -> generate, injects `DiffConfig` from runtime inputs (`enable_drop`, adapter `schema_search_path`, dialect `equivalence_policy`), executes statements for apply via `Executor`, and returns rendered SQL for dry-run with `-- Skipped:` diagnostics lines sourced from diff suppression diagnostics.
+- Files changed: `crates/core/src/orchestrator.rs`, `crates/core/src/lib.rs`, `crates/core/tests/orchestrator_apply_dryrun_test.rs`, `crates/core/tests/orchestrator_diffconfig_wiring_test.rs`, `crates/core/tests/support/fake_dialect.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test orchestrator_apply_dryrun_test`: PASS (2 passed, 0 failed).
+  - `cargo nextest run -p stateql-core --test orchestrator_diffconfig_wiring_test`: PASS (3 passed, 0 failed).
+  - `orchestrator_apply_dryrun_test` stability vs dialect implementation progress: PASS (tests use only `tests/support/fake_dialect.rs` and do not depend on `stateql-dialect-*` crates).
+  - `orchestrator_diffconfig_wiring_test` explicit wiring checks: PASS (`enable_drop`, `schema_search_path`, and `equivalence_policy` injection validated; dry-run includes `-- Skipped:` output when destructive ops are suppressed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (93 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep orchestrator policy injection independent from `DiffConfig` ownership using a delegating policy wrapper (`&'static dyn EquivalencePolicy` -> `Arc<dyn EquivalencePolicy>`) so dialect-owned policy behavior is preserved without widening diff API lifetimes.
+  - Gotchas encountered: Shared integration-test support modules are compiled per test target; helper methods used only by sibling tests must be guarded (`#[allow(dead_code)]`) to keep workspace-wide `-D warnings` green.
 ---
