@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use stateql_core::{
     CheckConstraint, Comment, CommentTarget, DataType, DiffConfig, DiffEngine, DiffError, DiffOp,
     Domain, Error, Expr, Extension, Function, FunctionParam, FunctionParamMode, Ident, Identity,
-    Literal, MaterializedView, Policy, PolicyCommand, Privilege, PrivilegeObject, QualifiedName,
-    SchemaDef, SchemaObject, Sequence, SequenceChange, Table, Trigger, TriggerEvent,
+    Literal, MaterializedView, Policy, PolicyCommand, Privilege, PrivilegeObject, PrivilegeOp,
+    QualifiedName, SchemaDef, SchemaObject, Sequence, SequenceChange, Table, Trigger, TriggerEvent,
     TriggerForEach, TriggerTiming, TypeChange, TypeDef, TypeKind, View,
 };
 
@@ -454,31 +454,34 @@ fn diffs_extension_schema_comment_and_policy_variants() {
 }
 
 #[test]
-fn fails_fast_when_remaining_variant_is_not_supported_yet() {
+fn compares_privilege_variants_without_fail_fast_error() {
     let engine = DiffEngine::new();
-    let privilege = Privilege::empty(
-        PrivilegeObject::Table(qualified("users")),
-        ident("app_user"),
+    let desired = vec![SchemaObject::Privilege(Privilege {
+        operations: vec![PrivilegeOp::Select, PrivilegeOp::Insert],
+        on: PrivilegeObject::Table(qualified("users")),
+        grantee: ident("app_user"),
+        with_grant_option: false,
+    })];
+    let current = vec![SchemaObject::Privilege(Privilege {
+        operations: vec![PrivilegeOp::Select],
+        on: PrivilegeObject::Table(qualified("users")),
+        grantee: ident("app_user"),
+        with_grant_option: false,
+    })];
+
+    let ops = engine
+        .diff(&desired, &current, &with_enable_drop(true))
+        .expect("privilege variants should be compared");
+
+    assert_eq!(
+        ops,
+        vec![DiffOp::Grant(Privilege {
+            operations: vec![PrivilegeOp::Insert],
+            on: PrivilegeObject::Table(qualified("users")),
+            grantee: ident("app_user"),
+            with_grant_option: false,
+        })]
     );
-
-    let error = engine
-        .diff(
-            &[
-                SchemaObject::Table(table("users")),
-                SchemaObject::Privilege(privilege),
-            ],
-            &[],
-            &with_enable_drop(true),
-        )
-        .expect_err("unsupported variant should fail fast");
-
-    match error {
-        Error::Diff(DiffError::ObjectComparison { target, operation }) => {
-            assert!(target.contains("privilege"));
-            assert!(operation.contains("support"));
-        }
-        other => panic!("unexpected error: {other}"),
-    }
 }
 
 #[test]

@@ -6,6 +6,7 @@ pub mod engine;
 mod name_resolution;
 mod partition;
 pub mod policy;
+mod privilege;
 mod rename;
 pub mod types;
 

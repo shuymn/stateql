@@ -584,15 +584,8 @@ impl<'a> ObjectBuckets<'a> {
                 | SchemaObject::Extension(_)
                 | SchemaObject::Schema(_)
                 | SchemaObject::Comment(_)
+                | SchemaObject::Privilege(_)
                 | SchemaObject::Policy(_) => {}
-                SchemaObject::Privilege(_) => {
-                    return Err(DiffError::ObjectComparison {
-                        target: schema_object_kind(object).to_string(),
-                        operation: "diff comparison does not support this object kind yet"
-                            .to_string(),
-                    }
-                    .into());
-                }
             }
         }
 
@@ -602,24 +595,5 @@ impl<'a> ObjectBuckets<'a> {
             materialized_views,
             indexes,
         })
-    }
-}
-
-fn schema_object_kind(object: &SchemaObject) -> &'static str {
-    match object {
-        SchemaObject::Table(_) => "table",
-        SchemaObject::View(_) => "view",
-        SchemaObject::MaterializedView(_) => "materialized_view",
-        SchemaObject::Index(_) => "index",
-        SchemaObject::Sequence(_) => "sequence",
-        SchemaObject::Trigger(_) => "trigger",
-        SchemaObject::Function(_) => "function",
-        SchemaObject::Type(_) => "type",
-        SchemaObject::Domain(_) => "domain",
-        SchemaObject::Extension(_) => "extension",
-        SchemaObject::Schema(_) => "schema",
-        SchemaObject::Comment(_) => "comment",
-        SchemaObject::Privilege(_) => "privilege",
-        SchemaObject::Policy(_) => "policy",
     }
 }

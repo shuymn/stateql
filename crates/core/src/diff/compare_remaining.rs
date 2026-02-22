@@ -1,7 +1,8 @@
+use super::privilege::compare_privileges;
 use crate::{
     CheckConstraint, Comment, DiffConfig, DiffError, DiffOp, Domain, DomainChange, Extension,
-    Function, Ident, MaterializedView, Policy, QualifiedName, Result, SchemaDef, SchemaObject,
-    Sequence, SequenceChange, Table, Trigger, TypeChange, TypeDef, TypeKind, View,
+    Function, Ident, MaterializedView, Policy, Privilege, QualifiedName, Result, SchemaDef,
+    SchemaObject, Sequence, SequenceChange, Table, Trigger, TypeChange, TypeDef, TypeKind, View,
 };
 
 pub(crate) fn compare_remaining_objects(
@@ -10,9 +11,6 @@ pub(crate) fn compare_remaining_objects(
     config: &DiffConfig,
     ops: &mut Vec<DiffOp>,
 ) -> Result<()> {
-    validate_supported_variants(desired, "desired")?;
-    validate_supported_variants(current, "current")?;
-
     let desired_views = collect_views(desired);
     let current_views = collect_views(current);
     compare_views(&desired_views, &current_views, config, ops);
@@ -57,6 +55,10 @@ pub(crate) fn compare_remaining_objects(
     let desired_comments = collect_comments(desired);
     let current_comments = collect_comments(current);
     compare_comments(&desired_comments, &current_comments, config, ops);
+
+    let desired_privileges = collect_privileges(desired);
+    let current_privileges = collect_privileges(current);
+    compare_privileges(&desired_privileges, &current_privileges, config, ops);
 
     let desired_policies = collect_policies(desired);
     let current_policies = collect_policies(current);
@@ -210,6 +212,16 @@ fn collect_policies(objects: &[SchemaObject]) -> Vec<&Policy> {
         .iter()
         .filter_map(|object| match object {
             SchemaObject::Policy(policy) => Some(policy),
+            _ => None,
+        })
+        .collect()
+}
+
+fn collect_privileges(objects: &[SchemaObject]) -> Vec<&Privilege> {
+    objects
+        .iter()
+        .filter_map(|object| match object {
+            SchemaObject::Privilege(privilege) => Some(privilege),
             _ => None,
         })
         .collect()
@@ -859,56 +871,6 @@ fn find_named_check<'a>(
         .iter()
         .copied()
         .find(|check| check.name.as_ref() == Some(name))
-}
-
-fn validate_supported_variants(objects: &[SchemaObject], side: &str) -> Result<()> {
-    for object in objects {
-        match object {
-            SchemaObject::Table(_)
-            | SchemaObject::View(_)
-            | SchemaObject::MaterializedView(_)
-            | SchemaObject::Index(_)
-            | SchemaObject::Sequence(_)
-            | SchemaObject::Trigger(_)
-            | SchemaObject::Function(_)
-            | SchemaObject::Type(_)
-            | SchemaObject::Domain(_)
-            | SchemaObject::Extension(_)
-            | SchemaObject::Schema(_)
-            | SchemaObject::Comment(_)
-            | SchemaObject::Policy(_) => {}
-            SchemaObject::Privilege(_) => {
-                return Err(DiffError::ObjectComparison {
-                    target: schema_object_kind(object).to_string(),
-                    operation: format!(
-                        "diff comparison does not support this object kind yet in {side} schema"
-                    ),
-                }
-                .into());
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn schema_object_kind(object: &SchemaObject) -> &'static str {
-    match object {
-        SchemaObject::Table(_) => "table",
-        SchemaObject::View(_) => "view",
-        SchemaObject::MaterializedView(_) => "materialized_view",
-        SchemaObject::Index(_) => "index",
-        SchemaObject::Sequence(_) => "sequence",
-        SchemaObject::Trigger(_) => "trigger",
-        SchemaObject::Function(_) => "function",
-        SchemaObject::Type(_) => "type",
-        SchemaObject::Domain(_) => "domain",
-        SchemaObject::Extension(_) => "extension",
-        SchemaObject::Schema(_) => "schema",
-        SchemaObject::Comment(_) => "comment",
-        SchemaObject::Privilege(_) => "privilege",
-        SchemaObject::Policy(_) => "policy",
-    }
 }
 
 fn implicit_identity_sequence_name(table: &QualifiedName, column: &Ident) -> QualifiedName {
