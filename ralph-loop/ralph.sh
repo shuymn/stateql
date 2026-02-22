@@ -93,10 +93,10 @@ auto_commit() {
     echo "  [ralph] Code committed: $code_msg"
   fi
 
-  # Fallback: lefthook pre-commit compiles the workspace (clippy, check, nextest),
-  # which may produce Cargo.lock changes that did not exist before the commit.
-  # Since these changes originate from the hook itself, re-running the hook would
-  # produce the same result, so we skip it here.
+  # Fallback: pre-existing Cargo.lock changes may be staged (line 75) but not
+  # included in the code commit — the pre-commit hook (lefthook stage_fixed) can
+  # modify the index, dropping non-glob files like Cargo.lock.
+  # Quality gate already validated the workspace, so hooks are skipped here.
   if ! git diff --quiet -- Cargo.lock; then
     git add Cargo.lock
     if LEFTHOOK=0 git commit --no-gpg-sign -m "chore: update Cargo.lock"; then
