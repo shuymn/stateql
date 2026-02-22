@@ -253,7 +253,7 @@
         "task-20",
         "task-21"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-22b",

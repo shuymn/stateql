@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For deterministic diff ordering, centralize sort logic in `crates/core/src/ordering.rs` with explicit priority/sub-priority enums and apply dependency topological sorting only inside the relevant priority groups (`CreateTable`, `CreateView`), while preserving original declaration order as the fallback tie-breaker.
 - For view rebuild closure, derive changed-view dependents from the current schema graph and emit `DropView` in reverse topological order plus `CreateView` in desired topological order, so unchanged dependent views are rebuilt deterministically.
 - For privilege diff semantics, match entries by `(on, grantee)` and compute operation deltas through a canonical helper (`diff_privilege_ops`) so list ordering/duplicates do not affect emitted minimal `Grant/Revoke` changes.
 - For constraint-modification exceptions under `enable_drop=false`, emit matched drop+add pairs from compare logic via a shared constraint-key helper so general suppression/diagnostics flow remains unchanged for truly destructive drops.
@@ -363,4 +364,18 @@
 - **Learnings:**
   - Patterns discovered: Keep view rebuild planning as a dedicated closure planner that consumes current/desired view graphs and returns ordered keys, so compare logic stays focused on op emission.
   - Gotchas encountered: Dependency extraction from raw view SQL must resolve unqualified relation names using the source view schema first; otherwise unchanged dependents can be missed when names are schema-qualified in IR.
+---
+## 2026-02-22 - task-22: Implement Diff Ordering Priorities
+- What was implemented: Added deterministic diff ordering in a new root `ordering` module with explicit priority (`1..30`) and table sub-priority (`22a..22i`) enums; wired `DiffEngine::resolve_and_order` to use the sorter; added dependency-aware ordering for `CreateTable` (FK graph) and `CreateView` (view reference graph) with declaration-order fallback; added Task 22 RED->GREEN contract tests and updated one pre-existing search-path test expectation to reflect global drop-before-create ordering.
+- Files changed: `crates/core/src/ordering.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff.rs`, `crates/core/src/lib.rs`, `crates/core/tests/diff_ordering_test.rs`, `crates/core/tests/schema_search_path_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test diff_ordering_test`: PASS (6 passed, 0 failed).
+  - `diff_ordering_test` fixture verifies `DESIGN.md` priority `1..30` coverage (no missing lines) and enforces `22a..22i`, FK/view dependency ordering, and declaration-order fallback: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (78 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep priority-aware ordering as a pure sorter over `Vec<DiffOp>` so compare logic remains focused on diff emission while ordering-specific evolution stays isolated.
+  - Gotchas encountered: Introducing global ordering can invalidate older tests that asserted incidental emission order; behavior-focused tests should assert deterministic ordering contract or membership unless sequence is part of the spec.
 ---
