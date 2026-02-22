@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For comment-driven SQL metadata (for example `@renamed`), run a quote-aware line-comment scan and strip only the matched annotation token so cleaned SQL keeps original line boundaries for parser error mapping.
 - When extending shared enum payloads (for example `Statement::Sql`), update the core enum, root re-exports, and all contract-test constructors in one task so workspace-wide quality gates catch no stale struct literals.
 - For multi-phase IR growth, add new object-family structs/enums in one module pass and update both `ir.rs` and `lib.rs` re-exports in the same change so downstream crate imports never drift during task boundaries.
 - For staged IR expansion, move growing object families into `src/ir/<domain>.rs` and switch enum variants to typed payload structs in one change, then immediately update cross-crate fixture constructors to keep workspace-wide tests green.
@@ -150,5 +151,19 @@
     - `cargo nextest run --workspace`: PASS (22 passed, 0 failed).
 - **Learnings:**
   - Patterns discovered: Statement-level diagnostic metadata should be modeled as typed enums on `Statement::Sql` and propagated via `Option` so execution semantics remain unchanged while diagnostics gain structure.
-  - Gotchas encountered: Adding a field to shared enum variants requires immediate updates to existing contract fixtures (`Statement::Sql` constructors) or workspace-wide compilation will fail before task tests run.
+- Gotchas encountered: Adding a field to shared enum variants requires immediate updates to existing contract fixtures (`Statement::Sql` constructors) or workspace-wide compilation will fail before task tests run.
+---
+
+## 2026-02-22 - task-11: Add Annotation Extractor (`@renamed`)
+- What was implemented: Added core annotation extraction via `AnnotationExtractor::extract` with line-preserving SQL cleanup, comment-only `@renamed from=...` parsing, string-literal safety, and deprecated `@rename` alias acceptance via `RenameAnnotation.deprecated_alias`.
+- Files changed: `crates/core/src/annotation.rs`, `crates/core/src/lib.rs`, `crates/core/tests/annotation_extractor_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test annotation_extractor_test`: PASS (2 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (24 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep rename annotation parsing in core with an explicit `deprecated_alias` marker so later parser pipelines can emit deprecation warnings without re-parsing comment tokens.
+  - Gotchas encountered: Failing to preserve exact line count during annotation stripping would break downstream parser line mapping; line endings must remain untouched while removing only annotation substrings.
 ---
