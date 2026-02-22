@@ -4,6 +4,7 @@ mod config;
 mod dialect;
 mod diff;
 mod error;
+mod executor;
 mod ir;
 mod ordering;
 mod plan;
@@ -26,6 +27,7 @@ pub use diff::{
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
 };
+pub use executor::Executor;
 pub use ir::{
     BinaryOperator, CheckConstraint, CheckOption, Column, ColumnPosition, Comment, CommentTarget,
     ComparisonOp, DataType, Deferrable, Domain, EnumValuePosition, ExclusionConstraint,
