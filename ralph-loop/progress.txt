@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For rename-aware diffing, keep strict name matching as the default path and run `resolve_rename_match(...)` only for unmatched desired objects so annotated renames emit `Rename*` ops without reintroducing drop/create churn.
 - For partition diffing in `DiffEngine`, delegate table partition logic to a dedicated `diff::partition` module and perform a two-stage compare (partition key: strategy+columns, then partition elements) so add/drop/change decomposition stays isolated from column/check comparison code.
 - For expanding `SchemaObject` diff coverage incrementally, keep `match SchemaObject` paths exhaustive (no wildcard arms) and route not-yet-supported variants through explicit `DiffError` fail-fast checks.
 - For staged diff-engine development, keep `DiffEngine::diff` split into explicit phases (`compare_*` first, then a dedicated resolve/order hook) so name resolution and ordering tasks can evolve without coupling to object-diff logic.
@@ -279,4 +280,17 @@
 - **Learnings:**
   - Patterns discovered: Comparing partition key (`strategy` + normalized partition columns) before element-level diffing avoids mixing table-level partition-shape changes with per-partition add/drop reconciliation.
   - Gotchas encountered: Iterating a `BTreeMap<_, &PartitionElement>` yields `&&PartitionElement`; the diff helper must clone from dereferenced values (`(*element).clone()`) to build owned `DiffOp` payloads cleanly.
+---
+## 2026-02-22 - task-16: Implement Rename Detection from `renamed_from`
+- What was implemented: Added rename-aware matching to `DiffEngine` for tables and columns using `renamed_from`, added index rename detection via `IndexDef.extra["stateql.renamed_from"]`, introduced `diff::rename` helpers (`resolve_rename_match`, index metadata decoding, and rename-equivalence normalization), and added RED->GREEN coverage for table/column/index rename plus no-annotation fallback behavior.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff/rename.rs`, `crates/core/tests/rename_detection_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test rename_detection_test`: PASS (4 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (58 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Normalize index definitions by stripping rename metadata before equality comparison so index rename annotations do not force false add/drop diffs.
+  - Gotchas encountered: `IndexDef` has no dedicated `renamed_from` field yet, so explicit index rename intent must currently be carried through `extra` metadata (`stateql.renamed_from`) until parser attachment adds first-class support.
 ---
