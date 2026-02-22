@@ -6,6 +6,7 @@ mod diff;
 mod error;
 mod executor;
 mod ir;
+mod orchestrator;
 mod ordering;
 mod plan;
 mod renderer;
@@ -41,6 +42,7 @@ pub use ir::{
     TypeDef, TypeKind, UnaryOperator, Value, View, ViewSecurity, Volatility, WindowSpec,
     extra_keys, float_total_cmp, value_total_eq,
 };
+pub use orchestrator::{Mode, Orchestrator, OrchestratorOptions, OrchestratorOutput};
 pub use plan::{DdlPlan, DdlPlanner, build_ddl_plan, sort_diff_ops};
 pub use renderer::Renderer;
 pub use statement::{SqliteRebuildStep, Statement, StatementContext};
