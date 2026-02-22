@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For wide contract enums under workspace `-D warnings`, pair an exhaustive variant-tag `match` helper with an `all_*_variants()` fixture list; this catches new-variant drift at compile time, and if `clippy::large_enum_variant` fires, box only the largest payload field instead of suppressing the lint.
 - For fail-fast rename annotation attachment, first resolve every line->target binding into immutable operations, then mutate IR objects in a second pass so orphan annotations cannot partially set `renamed_from`.
 - For comment-driven SQL metadata (for example `@renamed`), run a quote-aware line-comment scan and strip only the matched annotation token so cleaned SQL keeps original line boundaries for parser error mapping.
 - When extending shared enum payloads (for example `Statement::Sql`), update the core enum, root re-exports, and all contract-test constructors in one task so workspace-wide quality gates catch no stale struct literals.
@@ -181,4 +182,20 @@
 - **Learnings:**
   - Patterns discovered: Two-phase annotation attachment (resolve first, apply second) is the safest way to enforce S2 fail-fast behavior without partial IR mutation.
   - Gotchas encountered: Attachment targets need key-level matching helpers (`QualifiedName`/`Ident`) in core so parser crates can pass line mappings without coupling to mutable IR traversal internals.
+---
+
+## 2026-02-22 - task-13: Add Full `DiffOp` and Change Enums
+- What was implemented: Replaced the placeholder `DiffOp` with the full typed diff surface (`DiffOp`, `ColumnChange`, `SequenceChange`, `TypeChange`, `DomainChange`), split diff into `diff.rs` module root + `diff/types.rs` + `diff/engine.rs`, re-exported the new diff types from `stateql_core`, and added reusable `all_diffop_variants()` fixtures plus diff-surface tests.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/types.rs`, `crates/core/src/diff/engine.rs`, `crates/core/src/lib.rs`, `crates/core/tests/diffop_surface_test.rs`, `crates/core/tests/support/diffop_fixtures.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test diffop_surface_test`: PASS (3 passed, 0 failed).
+  - `DiffOp` variant definitions are centralized in `crates/core/src/diff/types.rs` and separated from engine scaffolding in `crates/core/src/diff/engine.rs`: PASS.
+  - `all_diffop_variants()` coverage guard exists and is enforced by exhaustive `diffop_variant_tag()` matching + count/uniqueness assertions: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (29 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Exhaustive variant-tag helpers in test fixtures are an effective compile-time guard against enum-surface drift while keeping runtime assertions straightforward.
+  - Gotchas encountered: Expanding `DiffOp` triggered `clippy::large_enum_variant`; boxing only the largest payload field (`AddColumn.column`) resolved it without lint suppression.
 ---
