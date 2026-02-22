@@ -2,21 +2,20 @@ mod adapter;
 mod equivalence;
 mod export_queries;
 mod extra_keys;
+mod generator;
 mod normalize;
 mod parser;
 mod to_sql;
 
 use stateql_core::{
-    ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, EquivalencePolicy, GenerateError, Ident,
-    Result, SchemaObject, Statement,
+    ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, EquivalencePolicy, Ident, Result,
+    SchemaObject, Statement,
 };
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct MssqlDialect;
 
 const DIALECT_NAME: &str = "mssql";
-const DIALECT_TARGET: &str = "dialect contract";
-const GENERATE_DDL_STUB_OP: &str = "GenerateDdlStub";
 
 pub fn server_version_query() -> &'static str {
     export_queries::SHOW_SERVER_VERSION_QUERY
@@ -39,13 +38,8 @@ impl Dialect for MssqlDialect {
         parser::parse_schema(sql)
     }
 
-    fn generate_ddl(&self, _ops: &[DiffOp]) -> Result<Vec<Statement>> {
-        Err(GenerateError::UnsupportedDiffOp {
-            diff_op: GENERATE_DDL_STUB_OP.to_string(),
-            target: DIALECT_TARGET.to_string(),
-            dialect: self.name().to_string(),
-        }
-        .into())
+    fn generate_ddl(&self, ops: &[DiffOp]) -> Result<Vec<Statement>> {
+        generator::generate_ddl(self.name(), ops)
     }
 
     fn to_sql(&self, obj: &SchemaObject) -> Result<String> {
