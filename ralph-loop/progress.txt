@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For executor `BatchBoundary` semantics, treat `Statement::BatchBoundary` as a cursor-advance no-op both inside transactional scans and top-level dispatch so `T,T,B,T` stays in one transaction while preserving sync-point ordering.
 - For executor `transactional:false` boundaries, keep transactional runs as contiguous groups (`T*`) and execute non-transactional SQL directly between groups, with a shared `flush_tx_if_open` commit helper so boundary behavior stays explicit ahead of `BatchBoundary` tasking.
 - For executor transaction grouping, scan `Statement` slices into contiguous transactional runs and execute each run through a single RAII `Transaction`, while keeping unsupported statement kinds as explicit fail-fast branches until their dedicated tasks land.
 - For circular FK fallback, preprocess dependency graphs in `crates/core/src/diff/cycle.rs` so only cycle-forming FK edges are split into `AddForeignKey`/`DropForeignKey` ops, while self-referential FKs stay embedded on `CreateTable`.
@@ -436,4 +437,17 @@
 - **Learnings:**
   - Patterns discovered: Keep `Executor` boundary behavior as `transactional` segment execution + direct non-transactional dispatch, so commit-before / begin-after semantics are guaranteed by segment transitions without long-lived transaction state.
   - Gotchas encountered: `Statement::BatchBoundary` remains fail-fast in Task 25 by design; changing it here would violate task sequencing and overlap Task 26 semantics.
+---
+## 2026-02-22 - task-26: Implement BatchBoundary No-Commit Semantics
+- What was implemented: Added Task 26 `BatchBoundary` execution semantics in `Executor` by treating `Statement::BatchBoundary` as a synchronization no-op (no SQL emission, no commit trigger) both in top-level dispatch and while scanning transactional groups, so `T,T,B,T` remains one transaction.
+- Files changed: `crates/core/src/executor.rs`, `crates/core/tests/executor_batchboundary_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test executor_batchboundary_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (86 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Batch-boundary behavior is safest when modeled as cursor advancement in the executor loop, avoiding any hidden transaction lifecycle side effects.
+  - Gotchas encountered: Handling `BatchBoundary` only in top-level dispatch is insufficient because transactional-run scanners can still split runs at boundaries and inadvertently introduce extra commits.
 ---
