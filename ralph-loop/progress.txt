@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For DDL planning boundaries, keep `DdlPlanner`/`DdlPlan` in `crates/core/src/plan.rs` and route `DiffEngine` ordering through `build_ddl_plan(...)` so ordering rules stay single-sourced in Task 22 sorter logic.
 - For deterministic diff ordering, centralize sort logic in `crates/core/src/ordering.rs` with explicit priority/sub-priority enums and apply dependency topological sorting only inside the relevant priority groups (`CreateTable`, `CreateView`), while preserving original declaration order as the fallback tie-breaker.
 - For view rebuild closure, derive changed-view dependents from the current schema graph and emit `DropView` in reverse topological order plus `CreateView` in desired topological order, so unchanged dependent views are rebuilt deterministically.
 - For privilege diff semantics, match entries by `(on, grantee)` and compute operation deltas through a canonical helper (`diff_privilege_ops`) so list ordering/duplicates do not affect emitted minimal `Grant/Revoke` changes.
@@ -378,4 +379,18 @@
 - **Learnings:**
   - Patterns discovered: Keep priority-aware ordering as a pure sorter over `Vec<DiffOp>` so compare logic remains focused on diff emission while ordering-specific evolution stays isolated.
   - Gotchas encountered: Introducing global ordering can invalidate older tests that asserted incidental emission order; behavior-focused tests should assert deterministic ordering contract or membership unless sequence is part of the spec.
+---
+## 2026-02-22 - task-22b: Implement Dedicated DDL Planner Module (`plan.rs`)
+- What was implemented: Added a dedicated planning module (`crates/core/src/plan.rs`) with `DdlPlanner`, `DdlPlan`, and `build_ddl_plan(...)`; moved planner-facing ordering access from `diff` to `plan`; updated `DiffEngine::resolve_and_order` to delegate through the planner so ordering remains centralized in Task 22 sorter behavior.
+- Files changed: `crates/core/src/plan.rs`, `crates/core/src/lib.rs`, `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/tests/ddl_plan_builder_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test ddl_plan_builder_test`: PASS (2 passed, 0 failed).
+  - Planner API is exported via `stateql_core` (`DdlPlanner`, `DdlPlan`, `build_ddl_plan`, `sort_diff_ops`) and validated by integration tests importing root exports: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (80 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep planner construction API as a thin boundary over deterministic sorting so orchestrator/executor tasks can consume a stable plan type without re-embedding ordering rules.
+  - Gotchas encountered: Re-exporting `sort_diff_ops` from both `diff` and `plan` causes duplicate root imports; planner boundary migration needs a single export source (`plan`).
 ---
