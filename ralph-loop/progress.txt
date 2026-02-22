@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For cross-module safety regression coverage, keep one dedicated `crates/core/tests/safety_*.rs` suite that reuses shared fake adapter/dialect fixtures and asserts both typed error payloads and side-effect counters (`begin/commit/rollback`, generated ops, executed SQL) so fail-fast/no-silent-drop guarantees stay explicit.
 - For YAML online runner semantics, keep the 8-step flow explicit (`apply current -> current idempotency -> forward diff/assert/apply -> desired idempotency -> reverse diff/assert/apply -> final idempotency`) and always compute online diffs against `adapter.export_schema()` plus live `schema_search_path` so `enable_drop`/reverse behavior reflects actual database state.
 - For offline YAML runner semantics, centralize `parse -> normalize -> diff -> generate` in one helper and evaluate `error` expectations outside that flow so flavor-mismatch handling can consistently treat any failure as expected.
 - For YAML flavor gating in testkit, keep `matches_flavor` as a pure function and route both `run_offline_test`/`run_online_test` through one expectation wrapper so non-matching flavors enforce sqldef semantics (`Err => skip`, `Ok => fail annotation`).
@@ -812,4 +813,17 @@
 - **Learnings:**
   - Patterns discovered: Keep online runner idempotency assertions separate from expected `up`/`down` SQL assertions so live-state drift is caught even when direction expectations are omitted.
   - Gotchas encountered: Reusing support modules across integration test binaries can trigger `dead_code` warnings under workspace `-D warnings`; either split support modules by use case or intentionally exercise shared helpers in each binary.
+---
+## 2026-02-22 - task-41: Add Safety Regressions S1-S5
+- What was implemented: Added a dedicated cross-module safety regression suite `crates/core/tests/safety_s1_s5_test.rs` covering S1 (unknown DDL fail-fast with no diff/execute side effects), S2 (orphan rename annotation fail-fast before drop/create planning), S3 (non-transactional boundary failure semantics), S4 (`BatchBoundary` no-commit rollback semantics), and S5 (missing index owner fail-fast).
+- Files changed: `crates/core/tests/safety_s1_s5_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test safety_s1_s5_test`: PASS (5 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (183 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep safety regressions assertion-heavy on both error variants and side effects (`generated_ops`, `executed_sql`, transaction counters) so “must not silently drop/commit” guarantees are directly pinned.
+  - Gotchas encountered: RED-phase expectations were already satisfied by current implementation for these scenarios, so Task 41 completed as regression lock-in without production code fixes.
 ---
