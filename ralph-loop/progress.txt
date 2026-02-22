@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For MSSQL export/to_sql stability while parser conversion remains table-first, persist original `CREATE TABLE` SQL in `table.options.extra` (`mssql.source_sql`) and let `to_sql` fall back to that hint, while keeping adapter APIs synchronous with fail-fast SQL Server `2019+` version gating.
 - For MySQL export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` SQL in `table.options.extra` (`mysql.source_sql`) and let `to_sql` fall back to that hint, while keeping export catalog SQL centralized in `export_queries.rs` and adapter version gating fail-fast (`8.0+`).
 - For SQLite export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` statement in `table.options.extra` (`sqlite.source_sql`) during parse and let `to_sql` fall back to that hint when structured table fields are absent, while still returning explicit `GenerateError` for unsupported `SchemaObject` variants.
 - For `sqlparser-rs` dialect parse foundations (MySQL/SQLite/MSSQL), keep the pipeline as `AnnotationExtractor::extract -> parser -> fail-fast conversion loop -> attach_annotations` and derive `statement_index`/`source_sql`/`source_location.line` from a quote/comment-aware statement splitter so non-`pg_query` backends keep deterministic parse diagnostics.
@@ -662,4 +663,22 @@
 - **Learnings:**
   - Patterns discovered: Keep MySQL adapter query text in `export_queries.rs` and pair parser-side `mysql.source_sql` hints with `to_sql` fallback to preserve export round-trips before full structured parser coverage.
   - Gotchas encountered: `clippy::absurd_extreme_comparisons` fires if a `u16` minor-version check compares against `0`; use a major-version gate for `8.0+` while keeping the user-facing error message explicit.
+---
+## 2026-02-22 - task-34d: MSSQL Full Normalize / to_sql / Adapter
+- What was implemented: Replaced MSSQL dialect stubs with production wiring for `connect/export_schema/schema_search_path/server_version/normalize/to_sql`; added `adapter.rs` with synchronous adapter boundary (live `tiberius` backend + override-backed export path for deterministic tests), added MSSQL export query constants, added MSSQL normalizer and SQL renderer with supported-vs-unsupported `SchemaObject` handling, and updated parser preconversion hints to persist `mssql.source_sql` plus clustered/identity flags for round-trip stability.
+- Files changed: `Cargo.lock`, `crates/dialect-mssql/Cargo.toml`, `crates/dialect-mssql/src/lib.rs`, `crates/dialect-mssql/src/extra_keys.rs`, `crates/dialect-mssql/src/parser.rs`, `crates/dialect-mssql/src/export_queries.rs`, `crates/dialect-mssql/src/adapter.rs`, `crates/dialect-mssql/src/normalize.rs`, `crates/dialect-mssql/src/to_sql.rs`, `crates/dialect-mssql/tests/dialect_surface_test.rs`, `crates/dialect-mssql/tests/adapter_export_schema_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test dialect_surface_test`: PASS (3 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test adapter_export_schema_test`: PASS (2 passed, 0 failed, 1 skipped).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test adapter_export_schema_test --run-ignored ignored-only`: PASS (1 passed, 0 failed, 2 skipped).
+  - `rg -n "pub async fn" crates/dialect-mssql/src`: PASS (0 hit).
+  - `dialect_surface_test` explicit `2019`-minimum reject coverage: PASS (`connect_rejects_sql_server_versions_below_2019`).
+  - `dialect_surface_test` supported variant (`Table/View/Index/Trigger/Function/Schema`) valid SQL + unsupported variant explicit `Error` coverage: PASS (`to_sql_supports_mssql_variants_and_rejects_unsupported_variants`).
+  - Quality gates:
+    - `CARGO_HOME=/tmp/cargo cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo nextest run --workspace`: PASS (139 passed, 0 failed, 3 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep MSSQL adapter internals async-capable (`tiberius`) but enforce the public adapter contract as synchronous by blocking within a private runtime and returning only core `Result`/typed errors.
+  - Gotchas encountered: `clippy::large_enum_variant` triggered for mixed live/override adapter backends; boxing the live backend state preserves ergonomics while satisfying workspace `-D warnings`.
 ---
