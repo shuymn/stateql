@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For fail-fast rename annotation attachment, first resolve every line->target binding into immutable operations, then mutate IR objects in a second pass so orphan annotations cannot partially set `renamed_from`.
 - For comment-driven SQL metadata (for example `@renamed`), run a quote-aware line-comment scan and strip only the matched annotation token so cleaned SQL keeps original line boundaries for parser error mapping.
 - When extending shared enum payloads (for example `Statement::Sql`), update the core enum, root re-exports, and all contract-test constructors in one task so workspace-wide quality gates catch no stale struct literals.
 - For multi-phase IR growth, add new object-family structs/enums in one module pass and update both `ir.rs` and `lib.rs` re-exports in the same change so downstream crate imports never drift during task boundaries.
@@ -166,4 +167,18 @@
 - **Learnings:**
   - Patterns discovered: Keep rename annotation parsing in core with an explicit `deprecated_alias` marker so later parser pipelines can emit deprecation warnings without re-parsing comment tokens.
   - Gotchas encountered: Failing to preserve exact line count during annotation stripping would break downstream parser line mapping; line endings must remain untouched while removing only annotation substrings.
+---
+
+## 2026-02-22 - task-12: Add Annotation Attachment Validation
+- What was implemented: Added `attach_annotations` in core with typed attachment targets (`AnnotationAttachment` / `AnnotationTarget`) that resolves annotation line bindings to IR object keys (`Table`, `View`, `MaterializedView`, and column variants), validates orphan/ambiguous matches as `DiffError`, and applies `renamed_from` updates only after full validation to keep fail-fast semantics.
+- Files changed: `crates/core/src/annotation.rs`, `crates/core/src/lib.rs`, `crates/core/tests/annotation_attach_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test annotation_attach_test`: PASS (2 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (26 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Two-phase annotation attachment (resolve first, apply second) is the safest way to enforce S2 fail-fast behavior without partial IR mutation.
+  - Gotchas encountered: Attachment targets need key-level matching helpers (`QualifiedName`/`Ident`) in core so parser crates can pass line mappings without coupling to mutable IR traversal internals.
 ---
