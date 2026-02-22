@@ -3,6 +3,16 @@ mod ident;
 mod schema_object;
 mod types;
 
+pub mod extra_keys {
+    pub mod mysql {
+        pub const AUTO_INCREMENT: &str = "mysql.auto_increment";
+    }
+
+    pub mod mssql {
+        pub const DEFAULT_CONSTRAINT_NAME: &str = "mssql.default_constraint_name";
+    }
+}
+
 pub use expr::{
     BinaryOperator, ComparisonOp, Expr, IsTest, Literal, SetQuantifier, SubQuery, UnaryOperator,
     WindowSpec,

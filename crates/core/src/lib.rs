@@ -16,7 +16,10 @@ pub use config::{ConnectionConfig, Version};
 pub use dialect::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, Dialect, EquivalencePolicy,
 };
-pub use diff::{ColumnChange, DiffOp, DomainChange, SequenceChange, TypeChange};
+pub use diff::{
+    ColumnChange, DiffOp, DomainChange, SequenceChange, TypeChange,
+    is_mysql_change_column_full_redefinition,
+};
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
 };
@@ -30,6 +33,6 @@ pub use ir::{
     PrivilegeObject, PrivilegeOp, QualifiedName, SchemaDef, SchemaObject, Sequence, SetQuantifier,
     SortOrder, SubQuery, Table, TableOptions, Trigger, TriggerEvent, TriggerForEach, TriggerTiming,
     TypeDef, TypeKind, UnaryOperator, Value, View, ViewSecurity, Volatility, WindowSpec,
-    float_total_cmp, value_total_eq,
+    extra_keys, float_total_cmp, value_total_eq,
 };
 pub use statement::{SqliteRebuildStep, Statement, StatementContext};

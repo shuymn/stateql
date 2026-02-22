@@ -4,7 +4,7 @@ use stateql_core::{
     Column, ColumnPosition, DataType, Expr, GeneratedColumn, Ident, Identity, IndexColumn,
     IndexDef, IndexOwner, Literal, MaterializedView, Partition, PartitionBound, PartitionElement,
     PartitionStrategy, PrimaryKey, QualifiedName, SchemaObject, Sequence, SetQuantifier, Table,
-    TableOptions, Value, View,
+    TableOptions, Value, View, extra_keys,
 };
 
 fn qualified(schema: Option<&str>, name: &str) -> QualifiedName {
@@ -107,7 +107,10 @@ fn table_index_partition_and_column_position_types_are_constructible() {
         comment: Some("primary identifier".to_string()),
         collation: None,
         renamed_from: None,
-        extra: BTreeMap::from([(String::from("mysql.auto_increment"), Value::Bool(true))]),
+        extra: BTreeMap::from([(
+            extra_keys::mysql::AUTO_INCREMENT.to_string(),
+            Value::Bool(true),
+        )]),
     });
     table.primary_key = Some(PrimaryKey {
         name: Some(Ident::unquoted("accounts_pkey")),

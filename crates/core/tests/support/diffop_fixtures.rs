@@ -9,7 +9,7 @@ use stateql_core::{
     PartitionStrategy, Policy, PolicyCommand, PrimaryKey, Privilege, PrivilegeObject, PrivilegeOp,
     QualifiedName, SchemaDef, Sequence, SequenceChange, SetQuantifier, SortOrder, Table,
     TableOptions, Trigger, TriggerEvent, TriggerForEach, TriggerTiming, TypeChange, TypeDef,
-    TypeKind, Value, View, Volatility,
+    TypeKind, Value, View, Volatility, extra_keys,
 };
 
 pub const EXPECTED_DIFFOP_VARIANT_COUNT: usize = 48;
@@ -44,7 +44,10 @@ fn sample_column(name: &str) -> Column {
         comment: Some("test column".to_string()),
         collation: Some("en_US".to_string()),
         renamed_from: None,
-        extra: BTreeMap::from([(String::from("mysql.auto_increment"), Value::Bool(true))]),
+        extra: BTreeMap::from([(
+            extra_keys::mysql::AUTO_INCREMENT.to_string(),
+            Value::Bool(true),
+        )]),
     }
 }
 

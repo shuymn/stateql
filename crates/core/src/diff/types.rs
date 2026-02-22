@@ -182,6 +182,33 @@ pub enum ColumnChange {
     SetCollation(Option<String>),
 }
 
+pub fn is_mysql_change_column_full_redefinition(changes: &[ColumnChange]) -> bool {
+    let mut has_set_type = false;
+    let mut has_set_not_null = false;
+    let mut has_set_default = false;
+    let mut has_set_identity = false;
+    let mut has_set_generated = false;
+    let mut has_set_collation = false;
+
+    for change in changes {
+        match change {
+            ColumnChange::SetType(_) => has_set_type = true,
+            ColumnChange::SetNotNull(_) => has_set_not_null = true,
+            ColumnChange::SetDefault(_) => has_set_default = true,
+            ColumnChange::SetIdentity(_) => has_set_identity = true,
+            ColumnChange::SetGenerated(_) => has_set_generated = true,
+            ColumnChange::SetCollation(_) => has_set_collation = true,
+        }
+    }
+
+    has_set_type
+        && has_set_not_null
+        && has_set_default
+        && has_set_identity
+        && has_set_generated
+        && has_set_collation
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum SequenceChange {
     SetType(DataType),
