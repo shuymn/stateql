@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For executor `transactional:false` boundaries, keep transactional runs as contiguous groups (`T*`) and execute non-transactional SQL directly between groups, with a shared `flush_tx_if_open` commit helper so boundary behavior stays explicit ahead of `BatchBoundary` tasking.
 - For executor transaction grouping, scan `Statement` slices into contiguous transactional runs and execute each run through a single RAII `Transaction`, while keeping unsupported statement kinds as explicit fail-fast branches until their dedicated tasks land.
 - For circular FK fallback, preprocess dependency graphs in `crates/core/src/diff/cycle.rs` so only cycle-forming FK edges are split into `AddForeignKey`/`DropForeignKey` ops, while self-referential FKs stay embedded on `CreateTable`.
 - For DDL planning boundaries, keep `DdlPlanner`/`DdlPlan` in `crates/core/src/plan.rs` and route `DiffEngine` ordering through `build_ddl_plan(...)` so ordering rules stay single-sourced in Task 22 sorter logic.
@@ -422,4 +423,17 @@
 - **Learnings:**
   - Patterns discovered: Segment-based execution (contiguous transactional run -> one transaction) keeps grouping logic deterministic and avoids long-lived mutable-borrow state inside the executor loop.
   - Gotchas encountered: Keeping a `Transaction<'_>` in an outer mutable state holder can complicate adapter borrow lifetimes; executing one transactional run at a time keeps borrow scopes simple.
+---
+## 2026-02-22 - task-25: Implement Non-Transactional Boundary Handling
+- What was implemented: Added executor support for `transactional:false` statements by executing them directly on the adapter between transactional groups, introduced `flush_tx_if_open(...)` for shared commit handling, and added RED->GREEN coverage for `T,T,N,T,T` boundary semantics and execution ordering.
+- Files changed: `crates/core/src/executor.rs`, `crates/core/tests/executor_non_transactional_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test executor_non_transactional_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (85 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep `Executor` boundary behavior as `transactional` segment execution + direct non-transactional dispatch, so commit-before / begin-after semantics are guaranteed by segment transitions without long-lived transaction state.
+  - Gotchas encountered: `Statement::BatchBoundary` remains fail-fast in Task 25 by design; changing it here would violate task sequencing and overlap Task 26 semantics.
 ---
