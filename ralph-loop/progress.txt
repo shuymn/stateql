@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For `schema_search_path` support in diff matching, keep strict key lookup first and run a dedicated fallback resolver only on misses so qualified/unqualified matching stays deterministic (first search-path schema wins) without interfering with rename resolution.
 - For rename-aware diffing, keep strict name matching as the default path and run `resolve_rename_match(...)` only for unmatched desired objects so annotated renames emit `Rename*` ops without reintroducing drop/create churn.
 - For partition diffing in `DiffEngine`, delegate table partition logic to a dedicated `diff::partition` module and perform a two-stage compare (partition key: strategy+columns, then partition elements) so add/drop/change decomposition stays isolated from column/check comparison code.
 - For expanding `SchemaObject` diff coverage incrementally, keep `match SchemaObject` paths exhaustive (no wildcard arms) and route not-yet-supported variants through explicit `DiffError` fail-fast checks.
@@ -293,4 +294,17 @@
 - **Learnings:**
   - Patterns discovered: Normalize index definitions by stripping rename metadata before equality comparison so index rename annotations do not force false add/drop diffs.
   - Gotchas encountered: `IndexDef` has no dedicated `renamed_from` field yet, so explicit index rename intent must currently be carried through `extra` metadata (`stateql.renamed_from`) until parser attachment adds first-class support.
+---
+## 2026-02-22 - task-17: Implement Name Matching with `schema_search_path`
+- What was implemented: Added `diff::name_resolution` helpers and wired `DiffEngine` table/index matching to resolve qualified/unqualified names using `DiffConfig.schema_search_path` while preserving strict exact-key matching as the first path and rename matching as the later fallback. Added dedicated RED->GREEN tests for match/mismatch behavior and first-match ordering.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff/name_resolution.rs`, `crates/core/tests/schema_search_path_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test schema_search_path_test`: PASS (4 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (62 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Centralize qualified/unqualified fallback matching in a small resolver module and call it from each object-key path (table/index) to keep compare-phase logic readable and consistent.
+  - Gotchas encountered: To keep ADR-0014 “first search path match wins” deterministic, resolution should construct candidate keys in search-path order instead of scanning map iteration order.
 ---
