@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For YAML assertion migration gates, keep corpus per dialect/group under tests/<dialect>/assertions/<group>/ and compare manifest-vs-corpus through shared testkit helpers (manifest_ported_case_references/yaml_case_references) so count+coverage drift checks stay single-sourced.
 - For YAML migration gating, centralize idempotency corpus directory loading and manifest coverage validation in stateql_testkit helpers (load_test_cases_from_dir/load_idempotency_manifest_from_path/validate_idempotency_manifest_entries/idempotency_manifest_coverage) so matrix and manifest tests stay in lockstep.
 - For dialect YAML corpus integration tests, keep case files under `tests/<dialect>/idempotency/` and load them through `stateql_testkit::load_test_cases_from_path` so file I/O + YAML parse error shaping stays centralized in testkit.
 - For Safety S6-S11 regressions, keep a dedicated core sweep test (`safety_s6_s11_test`) for cross-module diff/executor guarantees and pair SQLite atomicity with a shared fixture module (`tests/support/sqlite_atomicity_fixture.rs`) reused across integration tests.
@@ -875,4 +876,22 @@
 - **Learnings:**
   - Patterns discovered: Keep migration manifest `ported case` references as `<file>::<case_name>` and assert exact set equality against discovered YAML case files so corpus drift is detected immediately.
   - Gotchas encountered: `task-43b` idempotency DoD can be satisfied with parser/generator-safe table-only cases while deferring assertion-heavy/view/quote-sensitive cases to `task-43c`/`task-43d`, but manifest entries must explicitly encode those deferrals with tracking IDs.
+---
+## 2026-02-22 - task-43c: Port YAML Assertion Cases by Feature Group
+- What was implemented: Added assertion YAML corpora for all 4 dialects across feature groups (`tables/indexes/constraints/views`) with `up/down` expectations, introduced assertion manifest coverage tracking, added matrix/manifest tests for group-level gates, and extended `stateql_testkit` manifest helpers (`load_assertion_manifest_from_path`, assertion validate/coverage, shared manifest-vs-corpus set helpers) plus SQL expectation normalization for newline/trailing-semicolon tolerance.
+- Files changed: `crates/testkit/src/yaml_runner.rs`, `crates/testkit/src/lib.rs`, `crates/testkit/tests/yaml_assertion_matrix_test.rs`, `crates/testkit/tests/yaml_assertion_manifest_test.rs`, `crates/testkit/tests/yaml_migration_manifest_test.rs`, `tests/migration/assertion-manifest.yml`, `tests/postgres/assertions/tables/0001-ported.yml`, `tests/postgres/assertions/indexes/0001-ported.yml`, `tests/postgres/assertions/constraints/0001-ported.yml`, `tests/postgres/assertions/views/0001-ported.yml`, `tests/sqlite/assertions/tables/0001-ported.yml`, `tests/sqlite/assertions/indexes/0001-ported.yml`, `tests/sqlite/assertions/constraints/0001-ported.yml`, `tests/sqlite/assertions/views/0001-ported.yml`, `tests/mysql/assertions/tables/0001-ported.yml`, `tests/mysql/assertions/indexes/0001-ported.yml`, `tests/mysql/assertions/constraints/0001-ported.yml`, `tests/mysql/assertions/views/0001-ported.yml`, `tests/mssql/assertions/tables/0001-ported.yml`, `tests/mssql/assertions/indexes/0001-ported.yml`, `tests/mssql/assertions/constraints/0001-ported.yml`, `tests/mssql/assertions/views/0001-ported.yml`, `docs/2026-02-21-yaml-migration-status.md`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-testkit --test yaml_assertion_matrix_test`: PASS.
+  - `cargo nextest run -p stateql-testkit --test yaml_assertion_manifest_test`: PASS.
+  - Assertion corpus presence gate (`tests/{postgres,sqlite,mysql,mssql}/assertions/{tables,indexes,constraints,views}/` non-empty): PASS (enforced in matrix test).
+  - Per dialect/group assertion `ported >= 5` and coverage `>= 70%`: PASS (`5/6 = 83.3%` per group; enforced in manifest test).
+  - `assertion-manifest.yml` skipped entries include `reason` + `tracking`: PASS (enforced in manifest helper validation).
+  - `docs/2026-02-21-yaml-migration-status.md` updated with group-level assertion progress: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (194 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Manifest gate tests stay maintainable when both idempotency and assertion suites share the same manifest case-reference and corpus set builders.
+  - Gotchas encountered: PostgreSQL v1 parser normalization currently drops `NOT NULL` from this assertion shape, so expected SQL fixtures must align with normalized generator output instead of raw input text.
 ---
