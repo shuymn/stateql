@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::{
     compare_remaining::{compare_remaining_objects, validate_sequence_invariant},
     partition::diff_partition,
+    rename::{index_renamed_from, indexes_equivalent_for_rename, resolve_rename_match},
 };
 use crate::{
     CheckConstraint, Column, ColumnChange, DataType, DiffConfig, DiffError, DiffOp, Ident,
@@ -67,18 +68,33 @@ impl DiffEngine {
         config: &DiffConfig,
         ops: &mut Vec<DiffOp>,
     ) {
+        let mut matched_current = BTreeSet::new();
+
         for (table_key, desired_table) in &desired.tables {
-            match current.tables.get(table_key) {
-                Some(current_table) => {
-                    self.compare_table(desired_table, current_table, config, ops)
-                }
-                None => ops.push(DiffOp::CreateTable((*desired_table).clone())),
+            if let Some(current_table) = current.tables.get(table_key) {
+                matched_current.insert((*table_key).clone());
+                self.compare_table(desired_table, current_table, config, ops);
+                continue;
+            }
+
+            let renamed_from = table_renamed_from_key(desired_table);
+            if let Some((from_key, current_table)) =
+                resolve_rename_match(renamed_from.as_ref(), &current.tables, &matched_current)
+            {
+                matched_current.insert((*from_key).clone());
+                ops.push(DiffOp::RenameTable {
+                    from: current_table.name.clone(),
+                    to: desired_table.name.clone(),
+                });
+                self.compare_table(desired_table, current_table, config, ops);
+            } else {
+                ops.push(DiffOp::CreateTable((*desired_table).clone()));
             }
         }
 
         if config.enable_drop {
             for (table_key, current_table) in &current.tables {
-                if !desired.tables.contains_key(table_key) {
+                if !matched_current.contains(table_key) {
                     ops.push(DiffOp::DropTable(current_table.name.clone()));
                 }
             }
@@ -119,32 +135,55 @@ impl DiffEngine {
     ) {
         let current_by_name = map_columns_by_name(current_columns);
         let desired_by_name = map_columns_by_name(desired_columns);
+        let mut matched_current = BTreeSet::new();
 
         for (column_key, desired_column) in &desired_by_name {
-            match current_by_name.get(column_key) {
-                Some(current_column) => {
-                    let changes = column_changes(desired_column, current_column, config);
-                    if !changes.is_empty() {
-                        ops.push(DiffOp::AlterColumn {
-                            table: table.clone(),
-                            column: desired_column.name.clone(),
-                            changes,
-                        });
-                    }
-                }
-                None => {
-                    ops.push(DiffOp::AddColumn {
+            if let Some(current_column) = current_by_name.get(column_key) {
+                matched_current.insert((*column_key).clone());
+                let changes = column_changes(desired_column, current_column, config);
+                if !changes.is_empty() {
+                    ops.push(DiffOp::AlterColumn {
                         table: table.clone(),
-                        column: Box::new((*desired_column).clone()),
-                        position: None,
+                        column: desired_column.name.clone(),
+                        changes,
                     });
                 }
+                continue;
+            }
+
+            let renamed_from = column_renamed_from_key(desired_column);
+            if let Some((renamed_key, current_column)) =
+                resolve_rename_match(renamed_from.as_ref(), &current_by_name, &matched_current)
+            {
+                matched_current.insert((*renamed_key).clone());
+                ops.push(DiffOp::RenameColumn {
+                    table: table.clone(),
+                    from: current_column.name.clone(),
+                    to: desired_column.name.clone(),
+                });
+
+                let changes = column_changes(desired_column, current_column, config);
+                if !changes.is_empty() {
+                    ops.push(DiffOp::AlterColumn {
+                        table: table.clone(),
+                        column: desired_column.name.clone(),
+                        changes,
+                    });
+                }
+            } else {
+                ops.push(DiffOp::AddColumn {
+                    table: table.clone(),
+                    column: Box::new((*desired_column).clone()),
+                    position: None,
+                });
             }
         }
 
         if config.enable_drop {
             for (column_key, current_column) in &current_by_name {
-                if !desired_by_name.contains_key(column_key) {
+                if !desired_by_name.contains_key(column_key)
+                    && !matched_current.contains(column_key)
+                {
                     ops.push(DiffOp::DropColumn {
                         table: table.clone(),
                         column: current_column.name.clone(),
@@ -211,29 +250,48 @@ impl DiffEngine {
     ) -> Result<()> {
         let desired_by_key = map_indexes_by_key(desired_indexes)?;
         let current_by_key = map_indexes_by_key(current_indexes)?;
+        let mut matched_current = BTreeSet::new();
 
         for (index_key, desired_index) in &desired_by_key {
-            match current_by_key.get(index_key) {
-                Some(current_index) => {
-                    if desired_index != current_index {
-                        if config.enable_drop
-                            && let Some(name) = &current_index.name
-                        {
-                            ops.push(DiffOp::DropIndex {
-                                owner: current_index.owner.clone(),
-                                name: name.clone(),
-                            });
-                        }
-                        ops.push(DiffOp::AddIndex((*desired_index).clone()));
+            if let Some(current_index) = current_by_key.get(index_key) {
+                matched_current.insert((*index_key).clone());
+                if desired_index != current_index {
+                    if config.enable_drop
+                        && let Some(name) = &current_index.name
+                    {
+                        ops.push(DiffOp::DropIndex {
+                            owner: current_index.owner.clone(),
+                            name: name.clone(),
+                        });
                     }
+                    ops.push(DiffOp::AddIndex((*desired_index).clone()));
                 }
-                None => ops.push(DiffOp::AddIndex((*desired_index).clone())),
+                continue;
             }
+
+            let renamed_from_key = index_renamed_from_key(desired_index);
+            if let Some((from_key, current_index)) =
+                resolve_rename_match(renamed_from_key.as_ref(), &current_by_key, &matched_current)
+                && indexes_equivalent_for_rename(desired_index, current_index)
+            {
+                matched_current.insert((*from_key).clone());
+                let to = index_name(desired_index)?;
+                let from = index_name(current_index)?;
+                ops.push(DiffOp::RenameIndex {
+                    owner: desired_index.owner.clone(),
+                    from,
+                    to,
+                });
+                continue;
+            }
+
+            ops.push(DiffOp::AddIndex((*desired_index).clone()));
         }
 
         if config.enable_drop {
             for (index_key, current_index) in &current_by_key {
                 if !desired_by_key.contains_key(index_key)
+                    && !matched_current.contains(index_key)
                     && let Some(name) = &current_index.name
                 {
                     ops.push(DiffOp::DropIndex {
@@ -275,6 +333,38 @@ fn map_indexes_by_key<'a>(
         indexes_by_key.insert(key, *index);
     }
     Ok(indexes_by_key)
+}
+
+fn table_renamed_from_key(table: &Table) -> Option<QualifiedNameKey> {
+    let renamed_from = table.renamed_from.as_ref()?;
+    Some(QualifiedNameKey {
+        schema: table.name.schema.as_ref().map(IdentKey::from),
+        name: IdentKey::from(renamed_from),
+    })
+}
+
+fn column_renamed_from_key(column: &Column) -> Option<IdentKey> {
+    column.renamed_from.as_ref().map(IdentKey::from)
+}
+
+fn index_renamed_from_key(index: &IndexDef) -> Option<IndexLookupKey> {
+    let renamed_from = index_renamed_from(index)?;
+    Some(IndexLookupKey {
+        owner: IndexOwnerKey::from(&index.owner),
+        name: IdentKey::from(&renamed_from),
+    })
+}
+
+fn index_name(index: &IndexDef) -> Result<Ident> {
+    let Some(name) = &index.name else {
+        return Err(DiffError::ObjectComparison {
+            target: describe_index_owner(&index.owner),
+            operation: "index name is required for diff comparison".to_string(),
+        }
+        .into());
+    };
+
+    Ok(name.clone())
 }
 
 fn column_changes(desired: &Column, current: &Column, config: &DiffConfig) -> Vec<ColumnChange> {

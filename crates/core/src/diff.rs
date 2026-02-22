@@ -3,6 +3,7 @@ mod compare_remaining;
 pub mod engine;
 mod partition;
 pub mod policy;
+mod rename;
 pub mod types;
 
 pub use compare::DiffEngine;
