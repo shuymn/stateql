@@ -83,7 +83,7 @@ impl DiffEngine {
     }
 
     fn resolve_and_order(&self, ops: Vec<DiffOp>, _config: &DiffConfig) -> Result<Vec<DiffOp>> {
-        Ok(ops)
+        Ok(crate::ordering::sort_diff_ops(ops))
     }
 
     fn compare_tables(

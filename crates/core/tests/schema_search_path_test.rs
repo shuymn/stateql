@@ -119,8 +119,8 @@ fn does_not_match_when_schema_is_not_in_search_path() {
     assert_eq!(
         ops,
         vec![
-            DiffOp::CreateTable(table(unqualified("users"), vec![column("id")])),
             DiffOp::DropTable(qualified("app", "users")),
+            DiffOp::CreateTable(table(unqualified("users"), vec![column("id")])),
         ],
     );
 }

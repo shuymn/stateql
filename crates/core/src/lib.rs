@@ -5,6 +5,7 @@ mod dialect;
 mod diff;
 mod error;
 mod ir;
+mod ordering;
 mod statement;
 
 pub use adapter::{DatabaseAdapter, Transaction};
@@ -19,7 +20,7 @@ pub use diff::{
     DiffDiagnostics, DiffEngine, DiffOp, DiffOutcome, DomainChange, EquivalencePolicy,
     EquivalencePolicyContractError, SequenceChange, SkippedOpDiagnostic, SkippedOpKind, TypeChange,
     custom_types_equivalent, exprs_equivalent, is_mysql_change_column_full_redefinition,
-    verify_equivalence_policy_contract,
+    sort_diff_ops, verify_equivalence_policy_contract,
 };
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
