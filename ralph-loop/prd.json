@@ -83,7 +83,7 @@
       "deps": [
         "task-7"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-9",
