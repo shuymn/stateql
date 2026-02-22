@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For PostgreSQL residual expression equivalence, keep normalize() as the primary canonicalizer and scope policy matching to deterministic `Expr::Raw` spellings (casted integer literals, redundant outer parentheses, whitespace collapse), returning `false` for non-raw structural mismatches.
 - For PostgreSQL adapter/export contracts, centralize catalog SQL in `export_queries.rs` and keep `connect()` fail-fast by validating `SHOW server_version` (`13+`) plus parsing `SHOW search_path` once into normalized path entries (drop `$user`/`pg_catalog`/`pg_temp*`) before diff wiring.
 - For PostgreSQL normalization contracts, keep object-level normalization in `normalize_object` and cross-object canonicalization in a schema pass (`normalize_schema`) invoked from parser output so sequence/partition folding can run before core diff without changing the core `Dialect::normalize(&mut SchemaObject)` trait boundary.
 - For PostgreSQL generator contracts, keep SQL emission in a single op-dispatch (`emit_op`) and centralize unsupported payload failures through `unsupported_diff_op`, with conservative `DropView + CreateView -> CREATE OR REPLACE VIEW` optimization only when compatibility is provable from payload.
@@ -591,4 +592,19 @@
 - **Learnings:**
   - Patterns discovered: Keep adapter query text and schema export assembly separated (`export_queries.rs` + row-decoder/render helpers) so catalog coverage changes do not leak into connection/version/search-path handling.
   - Gotchas encountered: `ExecutionError` display omits inner source messages, so tests that validate fail-fast details should assert on `source.to_string()` instead of top-level `Error::to_string()`.
+---
+## 2026-02-22 - task-33c: PostgreSQL EquivalencePolicy Implementation
+- What was implemented: Added dialect-specific PostgreSQL `EquivalencePolicy` with deterministic residual expression canonicalization for casted integer literals (`'0'::integer`), redundant outer parentheses, and whitespace-only differences; wired `PostgresDialect::equivalence_policy()` to the new static policy; added integration tests that verify strict-vs-policy behavior through core diff and policy symmetry/stability contracts.
+- Files changed: `crates/dialect-postgres/src/equivalence.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-postgres/tests/equivalence_policy_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-postgres --test equivalence_policy_test`: PASS (3 passed, 0 failed).
+  - false diff regression cases (cast/literal, redundant parens, whitespace residuals) no longer reproduce via core `DiffEngine` when PostgreSQL policy is injected: PASS (`strict_diff_reports_*` tests assert strict config emits diffs and policy config emits none).
+  - symmetry / stability contract is explicitly verified in `postgres_policy_contract_is_symmetric_and_stable_and_keeps_structural_mismatch_strict`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (115 passed, 0 failed, 1 skipped).
+- **Learnings:**
+  - Patterns discovered: For residual expression equivalence, canonicalize text with quote-aware whitespace folding and balanced outer-paren stripping before narrow cast-literal handling; keep policy pure/deterministic and leave structural normalization to dialect normalizers.
+  - Gotchas encountered: Running quality gates concurrently causes transient cargo build-lock waits (`Blocking waiting for file lock on build directory`); the runs still passed once locks were released.
 ---
