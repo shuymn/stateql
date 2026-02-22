@@ -106,20 +106,20 @@ impl DatabaseAdapter for FakeAdapter {
     fn execute(&self, sql: &str) -> Result<()> {
         let mut state = self.state.borrow_mut();
 
-        if let Some(rule) = &state.fail_on_sql {
-            if rule.sql == sql {
-                return Err(ExecutionError::StatementFailed {
-                    statement_index: state.executed_sql.len(),
-                    sql: sql.to_string(),
-                    executed_statements: state.executed_sql.len(),
-                    source_location: Some(SourceLocation {
-                        line: 1,
-                        column: None,
-                    }),
-                    source: boxed_error(rule.message.clone()),
-                }
-                .into());
+        if let Some(rule) = &state.fail_on_sql
+            && rule.sql == sql
+        {
+            return Err(ExecutionError::StatementFailed {
+                statement_index: state.executed_sql.len(),
+                sql: sql.to_string(),
+                executed_statements: state.executed_sql.len(),
+                source_location: Some(SourceLocation {
+                    line: 1,
+                    column: None,
+                }),
+                source: boxed_error(rule.message.clone()),
             }
+            .into());
         }
 
         state.executed_sql.push(sql.to_string());

@@ -1,8 +1,8 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ident {
-    pub value: String,
-    pub quoted: bool,
-}
+mod ident;
+mod types;
+
+pub use ident::{Ident, QualifiedName};
+pub use types::{DataType, Value, float_total_cmp, value_total_eq};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SchemaObject {

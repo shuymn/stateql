@@ -15,5 +15,7 @@ pub use diff::DiffOp;
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
 };
-pub use ir::{Ident, SchemaObject};
+pub use ir::{
+    DataType, Ident, QualifiedName, SchemaObject, Value, float_total_cmp, value_total_eq,
+};
 pub use statement::Statement;
