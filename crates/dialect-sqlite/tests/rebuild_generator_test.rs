@@ -1,10 +1,18 @@
 use std::collections::BTreeMap;
 
 use stateql_core::{
-    Column, ColumnChange, ConnectionConfig, DataType, Dialect, DiffOp, Error, ExecutionError,
-    Executor, Ident, QualifiedName, SqliteRebuildStep, Statement, StatementContext,
+    Column, ColumnChange, DataType, Dialect, DiffOp, Executor, Ident, QualifiedName,
+    SqliteRebuildStep, Statement, StatementContext,
 };
 use stateql_dialect_sqlite::SqliteDialect;
+
+#[path = "support/sqlite_atomicity_fixture.rs"]
+mod sqlite_atomicity_fixture;
+
+use sqlite_atomicity_fixture::{
+    assert_copy_step_failure, assert_rollback_left_original_table, prepare_users_with_null_age,
+    set_not_null_age_op,
+};
 
 #[test]
 fn add_column_without_position_generates_simple_alter_statement() {
@@ -81,24 +89,10 @@ fn alter_column_rewrites_to_sqlite_rebuild_steps_with_context() {
 #[test]
 fn sqlite_rebuild_copy_failure_rolls_back_entire_transaction() {
     let dialect = SqliteDialect;
-    let config = in_memory_connection();
-    let mut adapter = dialect
-        .connect(&config)
-        .expect("in-memory sqlite connection should succeed");
-
-    adapter
-        .execute("CREATE TABLE users (age INTEGER);")
-        .expect("table creation should succeed");
-    adapter
-        .execute("INSERT INTO users(age) VALUES (NULL);")
-        .expect("seed row should succeed");
+    let mut adapter = prepare_users_with_null_age(&dialect);
 
     let statements = dialect
-        .generate_ddl(&[DiffOp::AlterColumn {
-            table: qualified(None, "users"),
-            column: ident("age"),
-            changes: vec![ColumnChange::SetNotNull(true)],
-        }])
+        .generate_ddl(&[set_not_null_age_op()])
         .expect("rebuild plan should generate");
 
     let mut executor = Executor::new(adapter.as_mut());
@@ -106,46 +100,8 @@ fn sqlite_rebuild_copy_failure_rolls_back_entire_transaction() {
         .execute_plan(&statements)
         .expect_err("copy step should fail for NULL -> NOT NULL migration");
 
-    let Error::Execute(ExecutionError::StatementFailed {
-        statement_context, ..
-    }) = error
-    else {
-        panic!("expected execution-stage error");
-    };
-    let Some(StatementContext::SqliteTableRebuild { table, step }) = statement_context.as_deref()
-    else {
-        panic!("expected sqlite rebuild context");
-    };
-    assert_eq!(table, &qualified(None, "users"));
-    assert_eq!(*step, SqliteRebuildStep::CopyData);
-
-    adapter
-        .execute("INSERT INTO users(age) VALUES (NULL);")
-        .expect("original nullable table should remain after rollback");
-
-    let exported = adapter
-        .export_schema()
-        .expect("export_schema should succeed after rollback");
-    assert!(
-        exported.contains("CREATE TABLE users"),
-        "original table definition should remain present: {exported}"
-    );
-    assert!(
-        !exported.contains("__stateql_rebuild_"),
-        "shadow table should be rolled back on failure: {exported}"
-    );
-}
-
-fn in_memory_connection() -> ConnectionConfig {
-    ConnectionConfig {
-        host: None,
-        port: None,
-        user: None,
-        password: None,
-        database: ":memory:".to_string(),
-        socket: None,
-        extra: BTreeMap::new(),
-    }
+    assert_copy_step_failure(error);
+    assert_rollback_left_original_table(adapter.as_ref());
 }
 
 fn ident(value: &str) -> Ident {
