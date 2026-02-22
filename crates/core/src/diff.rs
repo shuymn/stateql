@@ -1,6 +1,7 @@
 pub mod compare;
 mod compare_remaining;
 pub mod engine;
+mod name_resolution;
 mod partition;
 pub mod policy;
 mod rename;

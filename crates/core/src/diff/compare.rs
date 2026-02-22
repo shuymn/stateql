@@ -2,6 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
     compare_remaining::{compare_remaining_objects, validate_sequence_invariant},
+    name_resolution::{
+        IdentKey, IndexLookupKey, IndexOwnerKey, QualifiedNameKey, resolve_index_match,
+        resolve_qualified_name_match,
+    },
     partition::diff_partition,
     rename::{index_renamed_from, indexes_equivalent_for_rename, resolve_rename_match},
 };
@@ -73,6 +77,17 @@ impl DiffEngine {
         for (table_key, desired_table) in &desired.tables {
             if let Some(current_table) = current.tables.get(table_key) {
                 matched_current.insert((*table_key).clone());
+                self.compare_table(desired_table, current_table, config, ops);
+                continue;
+            }
+
+            if let Some((matched_key, current_table)) = resolve_qualified_name_match(
+                table_key,
+                &current.tables,
+                &matched_current,
+                &config.schema_search_path,
+            ) {
+                matched_current.insert((*matched_key).clone());
                 self.compare_table(desired_table, current_table, config, ops);
                 continue;
             }
@@ -255,17 +270,18 @@ impl DiffEngine {
         for (index_key, desired_index) in &desired_by_key {
             if let Some(current_index) = current_by_key.get(index_key) {
                 matched_current.insert((*index_key).clone());
-                if desired_index != current_index {
-                    if config.enable_drop
-                        && let Some(name) = &current_index.name
-                    {
-                        ops.push(DiffOp::DropIndex {
-                            owner: current_index.owner.clone(),
-                            name: name.clone(),
-                        });
-                    }
-                    ops.push(DiffOp::AddIndex((*desired_index).clone()));
-                }
+                self.push_index_update_ops(desired_index, current_index, config, ops);
+                continue;
+            }
+
+            if let Some((matched_key, current_index)) = resolve_index_match(
+                index_key,
+                &current_by_key,
+                &matched_current,
+                &config.schema_search_path,
+            ) {
+                matched_current.insert((*matched_key).clone());
+                self.push_index_update_ops(desired_index, current_index, config, ops);
                 continue;
             }
 
@@ -303,6 +319,29 @@ impl DiffEngine {
         }
 
         Ok(())
+    }
+
+    fn push_index_update_ops(
+        &self,
+        desired_index: &IndexDef,
+        current_index: &IndexDef,
+        config: &DiffConfig,
+        ops: &mut Vec<DiffOp>,
+    ) {
+        if desired_index == current_index {
+            return;
+        }
+
+        if config.enable_drop
+            && let Some(name) = &current_index.name
+        {
+            ops.push(DiffOp::DropIndex {
+                owner: current_index.owner.clone(),
+                name: name.clone(),
+            });
+        }
+
+        ops.push(DiffOp::AddIndex(desired_index.clone()));
     }
 }
 
@@ -559,60 +598,5 @@ fn schema_object_kind(object: &SchemaObject) -> &'static str {
         SchemaObject::Comment(_) => "comment",
         SchemaObject::Privilege(_) => "privilege",
         SchemaObject::Policy(_) => "policy",
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct IndexLookupKey {
-    owner: IndexOwnerKey,
-    name: IdentKey,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum IndexOwnerKey {
-    Table(QualifiedNameKey),
-    View(QualifiedNameKey),
-    MaterializedView(QualifiedNameKey),
-}
-
-impl From<&IndexOwner> for IndexOwnerKey {
-    fn from(value: &IndexOwner) -> Self {
-        match value {
-            IndexOwner::Table(name) => Self::Table(QualifiedNameKey::from(name)),
-            IndexOwner::View(name) => Self::View(QualifiedNameKey::from(name)),
-            IndexOwner::MaterializedView(name) => {
-                Self::MaterializedView(QualifiedNameKey::from(name))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct QualifiedNameKey {
-    schema: Option<IdentKey>,
-    name: IdentKey,
-}
-
-impl From<&QualifiedName> for QualifiedNameKey {
-    fn from(value: &QualifiedName) -> Self {
-        Self {
-            schema: value.schema.as_ref().map(IdentKey::from),
-            name: IdentKey::from(&value.name),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct IdentKey {
-    value: String,
-    quoted: bool,
-}
-
-impl From<&Ident> for IdentKey {
-    fn from(value: &Ident) -> Self {
-        Self {
-            value: value.value.clone(),
-            quoted: value.quoted,
-        }
     }
 }
