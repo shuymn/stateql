@@ -9,6 +9,7 @@ pub mod policy;
 mod privilege;
 mod rename;
 pub mod types;
+mod view_rebuild;
 
 pub use compare::DiffEngine;
 pub use enable_drop::{DiffDiagnostics, DiffOutcome, SkippedOpDiagnostic, SkippedOpKind};

@@ -1,4 +1,9 @@
-use super::privilege::compare_privileges;
+use std::collections::BTreeMap;
+
+use super::{
+    name_resolution::QualifiedNameKey, privilege::compare_privileges,
+    view_rebuild::build_view_rebuild_plan,
+};
 use crate::{
     CheckConstraint, Comment, DiffConfig, DiffError, DiffOp, Domain, DomainChange, Extension,
     Function, Ident, MaterializedView, Policy, Privilege, QualifiedName, Result, SchemaDef,
@@ -117,6 +122,14 @@ fn collect_views(objects: &[SchemaObject]) -> Vec<&View> {
         .collect()
 }
 
+fn map_views_by_name<'a>(views: &[&'a View]) -> BTreeMap<QualifiedNameKey, &'a View> {
+    let mut views_by_name = BTreeMap::new();
+    for view in views {
+        views_by_name.insert(QualifiedNameKey::from(&view.name), *view);
+    }
+    views_by_name
+}
+
 fn collect_materialized_views(objects: &[SchemaObject]) -> Vec<&MaterializedView> {
     objects
         .iter()
@@ -228,31 +241,43 @@ fn collect_privileges(objects: &[SchemaObject]) -> Vec<&Privilege> {
 }
 
 fn compare_views(desired: &[&View], current: &[&View], config: &DiffConfig, ops: &mut Vec<DiffOp>) {
-    for desired_view in desired.iter().copied() {
-        match current
-            .iter()
-            .copied()
-            .find(|candidate| candidate.name == desired_view.name)
-        {
-            Some(current_view) => {
-                if desired_view != current_view {
-                    if config.enable_drop {
-                        ops.push(DiffOp::DropView(current_view.name.clone()));
-                    }
-                    ops.push(DiffOp::CreateView(desired_view.clone()));
-                }
+    let desired_by_key = map_views_by_name(desired);
+    let current_by_key = map_views_by_name(current);
+    let rebuild_plan = build_view_rebuild_plan(&desired_by_key, &current_by_key);
+
+    if config.enable_drop {
+        for drop_key in &rebuild_plan.drop_order {
+            if let Some(current_view) = current_by_key.get(drop_key) {
+                ops.push(DiffOp::DropView(current_view.name.clone()));
             }
-            None => ops.push(DiffOp::CreateView(desired_view.clone())),
+        }
+    }
+
+    for create_key in &rebuild_plan.create_order {
+        if let Some(desired_view) = desired_by_key.get(create_key) {
+            ops.push(DiffOp::CreateView((*desired_view).clone()));
+        }
+    }
+
+    for desired_view in desired.iter().copied() {
+        let view_key = QualifiedNameKey::from(&desired_view.name);
+        if rebuild_plan.rebuild_set.contains(&view_key) {
+            continue;
+        }
+
+        if !current_by_key.contains_key(&view_key) {
+            ops.push(DiffOp::CreateView(desired_view.clone()));
         }
     }
 
     if config.enable_drop {
         for current_view in current.iter().copied() {
-            let missing_in_desired = desired
-                .iter()
-                .copied()
-                .all(|candidate| candidate.name != current_view.name);
-            if missing_in_desired {
+            let view_key = QualifiedNameKey::from(&current_view.name);
+            if rebuild_plan.rebuild_set.contains(&view_key) {
+                continue;
+            }
+
+            if !desired_by_key.contains_key(&view_key) {
                 ops.push(DiffOp::DropView(current_view.name.clone()));
             }
         }
