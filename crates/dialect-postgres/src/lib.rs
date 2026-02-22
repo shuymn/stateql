@@ -2,15 +2,17 @@ use std::error::Error as StdError;
 
 use stateql_core::{
     ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, ExecutionError, GenerateError, Ident,
-    ParseError, Result, SchemaObject, SourceLocation, Statement,
+    Result, SchemaObject, Statement,
 };
+
+mod extra_keys;
+mod parser;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PostgresDialect;
 
 const DIALECT_NAME: &str = "postgres";
 const DIALECT_TARGET: &str = "dialect contract";
-const PARSE_NOT_IMPLEMENTED: &str = "postgres parse is not implemented";
 const CONNECT_NOT_IMPLEMENTED: &str = "postgres connect is not implemented";
 const GENERATE_DDL_STUB_OP: &str = "GenerateDdlStub";
 const TO_SQL_STUB_OP: &str = "ToSqlStub";
@@ -22,16 +24,7 @@ impl Dialect for PostgresDialect {
     }
 
     fn parse(&self, sql: &str) -> Result<Vec<SchemaObject>> {
-        Err(ParseError::StatementConversion {
-            statement_index: 0,
-            source_sql: sql.to_string(),
-            source_location: Some(SourceLocation {
-                line: 1,
-                column: None,
-            }),
-            source: boxed_error(PARSE_NOT_IMPLEMENTED),
-        }
-        .into())
+        parser::parse_schema(sql)
     }
 
     fn generate_ddl(&self, _ops: &[DiffOp]) -> Result<Vec<Statement>> {
