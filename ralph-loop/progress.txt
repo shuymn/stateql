@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For YAML migration gating, centralize idempotency corpus directory loading and manifest coverage validation in stateql_testkit helpers (load_test_cases_from_dir/load_idempotency_manifest_from_path/validate_idempotency_manifest_entries/idempotency_manifest_coverage) so matrix and manifest tests stay in lockstep.
 - For dialect YAML corpus integration tests, keep case files under `tests/<dialect>/idempotency/` and load them through `stateql_testkit::load_test_cases_from_path` so file I/O + YAML parse error shaping stays centralized in testkit.
 - For Safety S6-S11 regressions, keep a dedicated core sweep test (`safety_s6_s11_test`) for cross-module diff/executor guarantees and pair SQLite atomicity with a shared fixture module (`tests/support/sqlite_atomicity_fixture.rs`) reused across integration tests.
 - For cross-module safety regression coverage, keep one dedicated `crates/core/tests/safety_*.rs` suite that reuses shared fake adapter/dialect fixtures and asserts both typed error payloads and side-effect counters (`begin/commit/rollback`, generated ops, executed SQL) so fail-fast/no-silent-drop guarantees stay explicit.
@@ -855,4 +856,23 @@
 - **Learnings:**
   - Patterns discovered: Dialect-level YAML corpus tests are easier to scale when file loading is centralized in testkit and per-dialect tests only handle path enumeration + result assertions.
   - Gotchas encountered: Current PostgreSQL parser scope is still `CREATE TABLE`-only for this flow, so standalone `CREATE INDEX` seed SQL fails parse-time in offline runner and must be deferred to later parser-expansion tasks.
+---
+## 2026-02-22 - task-43b: Port YAML Idempotency Cases for All Dialects
+- What was implemented: Added multi-dialect idempotency YAML corpus coverage for PostgreSQL/SQLite/MySQL/MSSQL (25 ported cases per dialect), introduced migration manifest tracking (`ported`/`skipped`) with reason+tracking metadata, added testkit helpers for corpus directory loading and manifest validation/coverage metrics, and added matrix+manifest tests plus migration status documentation.
+- Files changed: `crates/testkit/src/yaml_runner.rs`, `crates/testkit/src/lib.rs`, `crates/testkit/Cargo.toml`, `crates/testkit/tests/yaml_idempotency_matrix_test.rs`, `crates/testkit/tests/yaml_migration_manifest_test.rs`, `tests/postgres/idempotency/0010-ported-basics.yml`, `tests/sqlite/idempotency/0001-ported-basics.yml`, `tests/mysql/idempotency/0001-ported-basics.yml`, `tests/mssql/idempotency/0001-ported-basics.yml`, `tests/migration/idempotency-manifest.yml`, `docs/2026-02-21-yaml-migration-status.md`, `Cargo.lock`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-testkit --test yaml_idempotency_matrix_test`: PASS (1 passed, 0 failed).
+  - `cargo nextest run -p stateql-testkit --test yaml_migration_manifest_test`: PASS (1 passed, 0 failed).
+  - Each dialect has idempotency `ported >= 25`: PASS (manifest + matrix checks enforce this).
+  - Each dialect idempotency coverage `>= 70%`: PASS (83.3% for postgres/sqlite/mysql/mssql).
+  - `tests/{postgres,sqlite,mysql,mssql}/idempotency/` non-empty: PASS.
+  - `idempotency-manifest.yml` skipped entries require `reason` + `tracking`: PASS (enforced by `validate_idempotency_manifest_entries`).
+  - `docs/2026-02-21-yaml-migration-status.md` records per-dialect `ported/skipped/coverage%` and remaining reasons: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (192 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep migration manifest `ported case` references as `<file>::<case_name>` and assert exact set equality against discovered YAML case files so corpus drift is detected immediately.
+  - Gotchas encountered: `task-43b` idempotency DoD can be satisfied with parser/generator-safe table-only cases while deferring assertion-heavy/view/quote-sensitive cases to `task-43c`/`task-43d`, but manifest entries must explicitly encode those deferrals with tracking IDs.
 ---
