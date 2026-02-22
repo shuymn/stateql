@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
+use std::{cmp::Ordering, collections::BTreeMap, path::Path, sync::Arc};
 
 use serde::Deserialize;
 use stateql_core::{
@@ -39,6 +39,12 @@ enum RunnerOutcome {
 
 pub fn load_test_cases_from_str(yaml: &str) -> Result<BTreeMap<String, TestCase>> {
     serde_yaml::from_str(yaml).map_err(|source| parse_yaml_error(yaml, source))
+}
+
+pub fn load_test_cases_from_path(path: impl AsRef<Path>) -> Result<BTreeMap<String, TestCase>> {
+    let path = path.as_ref();
+    let yaml = std::fs::read_to_string(path).map_err(|source| parse_yaml_io_error(path, source))?;
+    load_test_cases_from_str(&yaml)
 }
 
 pub fn matches_flavor(requirement: Option<&str>, current_flavor: &str) -> bool {
@@ -421,6 +427,16 @@ fn parse_yaml_error(yaml: &str, source: serde_yaml::Error) -> stateql_core::Erro
         statement_index: 0,
         source_sql: source_sql_excerpt(yaml),
         source_location,
+        source: Box::new(source),
+    }
+    .into()
+}
+
+fn parse_yaml_io_error(path: &Path, source: std::io::Error) -> stateql_core::Error {
+    ParseError::StatementConversion {
+        statement_index: 0,
+        source_sql: path.display().to_string(),
+        source_location: None,
         source: Box::new(source),
     }
     .into()
