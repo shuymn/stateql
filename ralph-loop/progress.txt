@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For dry-run statement rendering, keep `Renderer` as the single statement-to-text boundary: emit each SQL statement with a trailing newline, map `Statement::BatchBoundary` through `Dialect::batch_separator()`, and normalize separator newlines so dialects can return either `GO` or `GO\n` safely.
 - For executor failure diagnostics, map adapter and transaction errors through a shared statement-error builder that merges current statement metadata with inherited execution location/context, and box statement_context in ExecutionError to avoid clippy result_large_err regressions.
 - For executor `BatchBoundary` semantics, treat `Statement::BatchBoundary` as a cursor-advance no-op both inside transactional scans and top-level dispatch so `T,T,B,T` stays in one transaction while preserving sync-point ordering.
 - For executor `transactional:false` boundaries, keep transactional runs as contiguous groups (`T*`) and execute non-transactional SQL directly between groups, with a shared `flush_tx_if_open` commit helper so boundary behavior stays explicit ahead of `BatchBoundary` tasking.
@@ -465,4 +466,17 @@
 - **Learnings:**
   - Patterns discovered: Keep execution error mapping centralized in `Executor` so statement metadata is attached consistently for begin/execute/commit failure paths.
   - Gotchas encountered: Adding full `StatementContext` directly to `ExecutionError` triggered `clippy::result_large_err`; boxing that payload (`Option<Box<StatementContext>>`) preserves typed diagnostics while keeping workspace lints green.
+---
+## 2026-02-22 - task-28: Implement Renderer with Dialect Separator
+- What was implemented: Added core `Renderer` with `Renderer::new(&dyn Dialect)` and `render(&[Statement]) -> String`; SQL statements are rendered line-by-line and `Statement::BatchBoundary` is converted to the dialect separator with newline normalization (e.g., `GO` -> `GO\n`).
+- Files changed: `crates/core/src/renderer.rs`, `crates/core/src/lib.rs`, `crates/core/tests/renderer_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test renderer_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (88 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep renderer output deterministic by making newline handling explicit for both SQL lines and dialect separators.
+  - Gotchas encountered: Dialect separators may already include a trailing newline; renderer-level normalization avoids duplicate blank lines in dry-run output.
 ---
