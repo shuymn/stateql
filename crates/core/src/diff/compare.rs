@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::{
     compare_remaining::{compare_remaining_objects, validate_sequence_invariant},
     constraint_pairing::check_drop_add_keys_match,
+    cycle::{apply_create_cycle_fallback, drop_fk_ops_for_drop_table_cycles},
     enable_drop::{DiffDiagnostics, DiffOutcome},
     name_resolution::{
         IdentKey, IndexLookupKey, IndexOwnerKey, QualifiedNameKey, resolve_index_match,
@@ -83,7 +84,8 @@ impl DiffEngine {
     }
 
     fn resolve_and_order(&self, ops: Vec<DiffOp>, _config: &DiffConfig) -> Result<Vec<DiffOp>> {
-        Ok(crate::plan::build_ddl_plan(ops).into_ops())
+        let fallback_ops = apply_create_cycle_fallback(ops);
+        Ok(crate::plan::build_ddl_plan(fallback_ops).into_ops())
     }
 
     fn compare_tables(
@@ -95,15 +97,16 @@ impl DiffEngine {
     ) {
         let mut matched_current = BTreeSet::new();
 
-        for (table_key, desired_table) in &desired.tables {
-            if let Some(current_table) = current.tables.get(table_key) {
-                matched_current.insert((*table_key).clone());
+        for desired_table in &desired.table_order {
+            let table_key = QualifiedNameKey::from(&desired_table.name);
+            if let Some(current_table) = current.tables.get(&table_key) {
+                matched_current.insert(table_key.clone());
                 self.compare_table(desired_table, current_table, config, ops);
                 continue;
             }
 
             if let Some((matched_key, current_table)) = resolve_qualified_name_match(
-                table_key,
+                &table_key,
                 &current.tables,
                 &matched_current,
                 &config.schema_search_path,
@@ -129,10 +132,19 @@ impl DiffEngine {
         }
 
         if config.enable_drop {
-            for (table_key, current_table) in &current.tables {
-                if !matched_current.contains(table_key) {
-                    ops.push(DiffOp::DropTable(current_table.name.clone()));
-                }
+            let dropped_tables = current
+                .table_order
+                .iter()
+                .copied()
+                .filter(|table| {
+                    let table_key = QualifiedNameKey::from(&table.name);
+                    !matched_current.contains(&table_key)
+                })
+                .collect::<Vec<_>>();
+
+            ops.extend(drop_fk_ops_for_drop_table_cycles(&dropped_tables));
+            for current_table in dropped_tables {
+                ops.push(DiffOp::DropTable(current_table.name.clone()));
             }
         }
     }
@@ -550,6 +562,7 @@ fn display_ident(ident: &Ident) -> String {
 #[derive(Debug)]
 struct ObjectBuckets<'a> {
     tables: BTreeMap<QualifiedNameKey, &'a Table>,
+    table_order: Vec<&'a Table>,
     views: BTreeSet<QualifiedNameKey>,
     materialized_views: BTreeSet<QualifiedNameKey>,
     indexes: Vec<&'a IndexDef>,
@@ -558,6 +571,7 @@ struct ObjectBuckets<'a> {
 impl<'a> ObjectBuckets<'a> {
     fn from_schema(objects: &'a [SchemaObject]) -> Result<Self> {
         let mut tables = BTreeMap::new();
+        let mut table_order = Vec::new();
         let mut views = BTreeSet::new();
         let mut materialized_views = BTreeSet::new();
         let mut indexes = Vec::new();
@@ -566,6 +580,7 @@ impl<'a> ObjectBuckets<'a> {
             match object {
                 SchemaObject::Table(table) => {
                     tables.insert(QualifiedNameKey::from(&table.name), table);
+                    table_order.push(table);
                 }
                 SchemaObject::View(view) => {
                     views.insert(QualifiedNameKey::from(&view.name));
@@ -591,6 +606,7 @@ impl<'a> ObjectBuckets<'a> {
 
         Ok(Self {
             tables,
+            table_order,
             views,
             materialized_views,
             indexes,
