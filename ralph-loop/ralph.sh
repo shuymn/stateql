@@ -115,6 +115,16 @@ auto_commit() {
     fi
     echo "  [ralph] Tracking committed for ${task_id}"
   fi
+
+  # 3. Safety net: commit Cargo.lock if it still has uncommitted changes
+  if ! git diff --quiet -- Cargo.lock; then
+    git add Cargo.lock
+    if ! git commit --no-gpg-sign -m "chore: update Cargo.lock"; then
+      echo "  [ralph] WARN: Cargo.lock commit failed (may be clean)"
+    else
+      echo "  [ralph] Cargo.lock committed (safety net)"
+    fi
+  fi
 }
 
 for i in $(seq 1 "$MAX_ITERATIONS"); do
