@@ -76,15 +76,15 @@ auto_commit() {
     rm -f "$commit_msg_file"
   fi
 
-  # 1. Commit code changes (crates/)
+  # 1. Commit code changes (crates/ + Cargo.lock)
   local has_code_changes=false
-  if ! git diff --quiet -- crates/ \
+  if ! git diff --quiet -- crates/ Cargo.lock \
      || [ -n "$(git ls-files --others --exclude-standard crates/)" ]; then
     has_code_changes=true
   fi
 
   if [ "$has_code_changes" = true ]; then
-    git add crates/
+    git add crates/ Cargo.lock
     if ! git commit -m "$code_msg"; then
       echo "  [ralph] WARN: code commit failed, retrying with --no-gpg-sign..."
       if ! git commit --no-gpg-sign -m "$code_msg"; then
