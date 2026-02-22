@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For MySQL generator semantics, process contiguous table-scoped ops as a batch, merge repeated AlterColumn changes into one CHANGE COLUMN per column, emit PK ops before AUTO_INCREMENT CHANGE COLUMN rewrites, and optimize DropView+CreateView into CREATE OR REPLACE VIEW only when the target view name matches.
 - For SQLite generator rebuild semantics, batch table-structure diff ops per table and emit a six-step transactional `StatementContext::SqliteTableRebuild` sequence (`CreateShadowTable` -> `CopyData` -> `DropOldTable` -> `RenameShadowTable` -> `RecreateIndexes` -> `RecreateTriggers`) so failures surface precise rebuild-step diagnostics and rollback stays atomic.
 - For non-PostgreSQL residual expression equivalence, wire explicit custom `equivalence_policy()` implementations that canonicalize only `Expr::Raw` integer-cast literals + redundant outer parentheses + whitespace collapse, keep `is_equivalent_custom_type` strict, and enforce symmetry/stability with `verify_equivalence_policy_contract`.
 - For MSSQL export/to_sql stability while parser conversion remains table-first, persist original `CREATE TABLE` SQL in `table.options.extra` (`mssql.source_sql`) and let `to_sql` fall back to that hint, while keeping adapter APIs synchronous with fail-fast SQL Server `2019+` version gating.
@@ -714,4 +715,22 @@
 - **Learnings:**
   - Patterns discovered: Rebuild-step context should be attached to every emitted SQL statement (including no-op rebuild tail steps) so executor error propagation can reliably pinpoint failing rebuild phases.
   - Gotchas encountered: SQLite rebuild generation currently depends on diff payload richness; when full target table shape is unavailable in a batch, the safest fallback is shadow-table creation via `CREATE TABLE ... AS SELECT ... WHERE 0` plus fail-fast handling for unsupported SQL surface.
+---
+## 2026-02-22 - task-36: MySQL Full Generator (CHANGE COLUMN / AUTO_INCREMENT / AFTER / Partitioning)
+- What was implemented: Added MySQL `generate_ddl` implementation in `generator.rs` with per-table batching, merged `AlterColumn` -> single `CHANGE COLUMN` emission, AUTO_INCREMENT two-phase ordering (PK ops before AUTO_INCREMENT change), `ADD COLUMN ... FIRST/AFTER` rendering, partition add/drop SQL emission, and `DropView + CreateView` -> `CREATE OR REPLACE VIEW` optimization when names match; wired dialect `lib.rs` to the generator and shared `to_sql` render helpers for consistent SQL formatting.
+- Files changed: `crates/dialect-mysql/src/generator.rs`, `crates/dialect-mysql/src/lib.rs`, `crates/dialect-mysql/src/to_sql.rs`, `crates/dialect-mysql/tests/change_column_merge_test.rs`, `crates/dialect-mysql/tests/auto_increment_ordering_test.rs`, `crates/dialect-mysql/tests/column_position_after_test.rs`, `crates/dialect-mysql/tests/partition_generator_test.rs`, `crates/dialect-mysql/tests/generator_contract_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mysql --test change_column_merge_test`: PASS (1 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mysql --test auto_increment_ordering_test`: PASS (1 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mysql --test column_position_after_test`: PASS (1 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mysql --test partition_generator_test`: PASS (2 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mysql --test generator_contract_test`: PASS (2 passed, 0 failed).
+  - `generator_contract_test` exhaustively classifies all `DiffOp` variants via `all_diffop_variants()` and validates supported-vs-unsupported behavior: PASS.
+  - Quality gates:
+    - `CARGO_HOME=/tmp/cargo cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo nextest run --workspace`: PASS (160 passed, 0 failed, 3 skipped).
+- **Learnings:**
+  - Patterns discovered: MySQL generator correctness is more stable when unsupported-shape errors from renderer helpers are remapped to variant-tagged `UnsupportedDiffOp` errors at the generator boundary, so exhaustive support-contract tests stay aligned with `DiffOp` classification.
+  - Gotchas encountered: `to_sql` helper failures can leak internal diff-op names (`CreateTableUnsupportedShape`) unless explicitly normalized in generator error mapping.
 ---
