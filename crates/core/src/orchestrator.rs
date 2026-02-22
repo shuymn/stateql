@@ -2,14 +2,15 @@ use std::sync::Arc;
 
 use crate::{
     ConnectionConfig, DatabaseAdapter, Dialect, DiffConfig, DiffDiagnostics, DiffEngine,
-    EquivalencePolicy, Executor, Expr, OrchestratorOutput::DryRunSql, Renderer, Result,
-    SchemaObject, Statement,
+    EquivalencePolicy, Executor, Expr, OrchestratorOutput::*, Renderer, Result, SchemaObject,
+    Statement,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Apply,
     DryRun,
+    Export,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +23,7 @@ pub struct OrchestratorOptions {
 pub enum OrchestratorOutput {
     Applied,
     DryRunSql(String),
+    ExportSql(String),
 }
 
 pub struct Orchestrator<'a> {
@@ -46,25 +48,25 @@ impl<'a> Orchestrator<'a> {
     ) -> Result<OrchestratorOutput> {
         let mut adapter = self.dialect.connect(connection_config)?;
         let current_sql = adapter.export_schema()?;
-
         let current = self.parse_and_normalize(&current_sql)?;
-        let desired = self.parse_and_normalize(desired_sql)?;
-
-        let diff_config = self.diff_config(adapter.as_ref(), options.enable_drop);
-        let diff_outcome =
-            self.diff_engine
-                .diff_with_diagnostics(&desired, &current, &diff_config)?;
-        let statements = self.dialect.generate_ddl(&diff_outcome.ops)?;
-
         match options.mode {
-            Mode::Apply => {
-                let mut executor = Executor::new(adapter.as_mut());
-                executor.execute_plan(&statements)?;
-                Ok(OrchestratorOutput::Applied)
-            }
-            Mode::DryRun => {
-                let rendered = self.render_dry_run(&statements, &diff_outcome.diagnostics);
-                Ok(DryRunSql(rendered))
+            Mode::Export => Ok(ExportSql(self.render_export(&current)?)),
+            Mode::Apply | Mode::DryRun => {
+                let desired = self.parse_and_normalize(desired_sql)?;
+                let diff_config = self.diff_config(adapter.as_ref(), options.enable_drop);
+                let diff_outcome =
+                    self.diff_engine
+                        .diff_with_diagnostics(&desired, &current, &diff_config)?;
+                let statements = self.dialect.generate_ddl(&diff_outcome.ops)?;
+
+                if options.mode == Mode::Apply {
+                    let mut executor = Executor::new(adapter.as_mut());
+                    executor.execute_plan(&statements)?;
+                    Ok(OrchestratorOutput::Applied)
+                } else {
+                    let rendered = self.render_dry_run(&statements, &diff_outcome.diagnostics);
+                    Ok(DryRunSql(rendered))
+                }
             }
         }
     }
@@ -95,6 +97,15 @@ impl<'a> Orchestrator<'a> {
         rendered.push_str(&renderer.render(statements));
 
         rendered
+    }
+
+    fn render_export(&self, objects: &[SchemaObject]) -> Result<String> {
+        let mut rendered = String::new();
+        for object in objects {
+            rendered.push_str(&self.dialect.to_sql(object)?);
+            rendered.push('\n');
+        }
+        Ok(rendered)
     }
 }
 

@@ -88,6 +88,7 @@ pub struct FakeDialect {
 struct FakeDialectState {
     parse_results: BTreeMap<String, Vec<SchemaObject>>,
     generated_ops: Vec<DiffOp>,
+    to_sql_calls: Vec<SchemaObject>,
     adapter_state: Arc<Mutex<FakeAdapterState>>,
 }
 
@@ -96,6 +97,7 @@ impl Default for FakeDialectState {
         Self {
             parse_results: BTreeMap::new(),
             generated_ops: Vec::new(),
+            to_sql_calls: Vec::new(),
             adapter_state: Arc::new(Mutex::new(FakeAdapterState::default())),
         }
     }
@@ -154,6 +156,14 @@ impl FakeDialect {
             .clone()
     }
 
+    pub fn to_sql_calls(&self) -> Vec<SchemaObject> {
+        self.state
+            .lock()
+            .expect("fake dialect mutex should lock")
+            .to_sql_calls
+            .clone()
+    }
+
     pub fn executed_sql(&self) -> Vec<String> {
         let state = self.state.lock().expect("fake dialect mutex should lock");
         state
@@ -197,6 +207,11 @@ impl Dialect for FakeDialect {
     }
 
     fn to_sql(&self, obj: &SchemaObject) -> Result<String> {
+        self.state
+            .lock()
+            .expect("fake dialect mutex should lock")
+            .to_sql_calls
+            .push(obj.clone());
         Ok(format!("{obj:?}"))
     }
 
