@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
     compare_remaining::{compare_remaining_objects, validate_sequence_invariant},
+    constraint_pairing::check_drop_add_keys_match,
     enable_drop::{DiffDiagnostics, DiffOutcome},
     name_resolution::{
         IdentKey, IndexLookupKey, IndexOwnerKey, QualifiedNameKey, resolve_index_match,
@@ -243,7 +244,9 @@ impl DiffEngine {
             match current_named.get(check_key) {
                 Some((_, current_check)) => {
                     if !checks_equivalent(desired_check, current_check, config) {
-                        if config.enable_drop {
+                        if config.enable_drop
+                            || check_drop_add_keys_match(table, check_name, desired_check)
+                        {
                             ops.push(DiffOp::DropCheck {
                                 table: table.clone(),
                                 name: check_name.clone(),
