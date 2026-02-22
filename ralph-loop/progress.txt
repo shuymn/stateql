@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For executor failure diagnostics, map adapter and transaction errors through a shared statement-error builder that merges current statement metadata with inherited execution location/context, and box statement_context in ExecutionError to avoid clippy result_large_err regressions.
 - For executor `BatchBoundary` semantics, treat `Statement::BatchBoundary` as a cursor-advance no-op both inside transactional scans and top-level dispatch so `T,T,B,T` stays in one transaction while preserving sync-point ordering.
 - For executor `transactional:false` boundaries, keep transactional runs as contiguous groups (`T*`) and execute non-transactional SQL directly between groups, with a shared `flush_tx_if_open` commit helper so boundary behavior stays explicit ahead of `BatchBoundary` tasking.
 - For executor transaction grouping, scan `Statement` slices into contiguous transactional runs and execute each run through a single RAII `Transaction`, while keeping unsupported statement kinds as explicit fail-fast branches until their dedicated tasks land.
@@ -450,4 +451,18 @@
 - **Learnings:**
   - Patterns discovered: Batch-boundary behavior is safest when modeled as cursor advancement in the executor loop, avoiding any hidden transaction lifecycle side effects.
   - Gotchas encountered: Handling `BatchBoundary` only in top-level dispatch is insufficient because transactional-run scanners can still split runs at boundaries and inadvertently introduce extra commits.
+---
+## 2026-02-22 - task-27: Propagate Execution Context into `ExecutionError`
+- What was implemented: Added `ExecutionError::StatementFailed.statement_context` and an `ExecutionError::statement_failed(...)` builder, then updated `Executor` to map adapter/transaction failures into statement-scoped execution errors with statement index, SQL text, executed statement count, inherited source location, and propagated `Statement::Sql.context`.
+- Files changed: `crates/core/src/error.rs`, `crates/core/src/executor.rs`, `crates/core/tests/execution_error_context_test.rs`, `crates/core/tests/error_types_test.rs`, `crates/core/tests/error_wrap_test.rs`, `crates/core/tests/support/fake_adapter.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-mysql/src/lib.rs`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-mssql/src/lib.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test execution_error_context_test`: PASS (1 passed, 0 failed).
+  - Failure-path contract verified in test: `statement_index=1`, failed SQL text matches, `executed_statements=1`, and `statement_context` is propagated from `Statement::Sql.context`.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (87 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep execution error mapping centralized in `Executor` so statement metadata is attached consistently for begin/execute/commit failure paths.
+  - Gotchas encountered: Adding full `StatementContext` directly to `ExecutionError` triggered `clippy::result_large_err`; boxing that payload (`Option<Box<StatementContext>>`) preserves typed diagnostics while keeping workspace lints green.
 ---
