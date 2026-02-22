@@ -374,7 +374,7 @@ fn render_function_param(param: &stateql_core::FunctionParam) -> String {
     sql
 }
 
-fn render_data_type(data_type: &DataType) -> String {
+pub(crate) fn render_data_type(data_type: &DataType) -> String {
     match data_type {
         DataType::Boolean => "boolean".to_string(),
         DataType::SmallInt => "smallint".to_string(),
@@ -407,7 +407,7 @@ fn render_data_type(data_type: &DataType) -> String {
     }
 }
 
-fn render_expr(expr: &Expr) -> String {
+pub(crate) fn render_expr(expr: &Expr) -> String {
     match expr {
         Expr::Literal(literal) => render_literal(literal),
         Expr::Ident(ident) => render_ident(ident),
@@ -740,7 +740,7 @@ fn render_function_param_mode(mode: FunctionParamMode) -> &'static str {
     }
 }
 
-fn render_qualified_name(name: &stateql_core::QualifiedName) -> String {
+pub(crate) fn render_qualified_name(name: &stateql_core::QualifiedName) -> String {
     if let Some(schema) = &name.schema {
         format!("{}.{}", render_ident(schema), render_ident(&name.name))
     } else {
@@ -748,7 +748,7 @@ fn render_qualified_name(name: &stateql_core::QualifiedName) -> String {
     }
 }
 
-fn render_ident(ident: &Ident) -> String {
+pub(crate) fn render_ident(ident: &Ident) -> String {
     format!("`{}`", ident.value.replace('`', "``"))
 }
 
