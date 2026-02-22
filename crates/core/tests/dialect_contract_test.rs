@@ -1,6 +1,6 @@
 use stateql_core::{
     ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, GenerateError, Ident, Result, SchemaObject,
-    Statement,
+    Statement, Transaction, Version,
 };
 
 #[derive(Debug, Default)]
@@ -14,8 +14,24 @@ impl DatabaseAdapter for DummyAdapter {
         Ok("".to_string())
     }
 
-    fn execute(&mut self, _statement: &Statement) -> Result<()> {
+    fn execute(&self, _sql: &str) -> Result<()> {
         Ok(())
+    }
+
+    fn begin(&mut self) -> Result<Transaction<'_>> {
+        Ok(Transaction::new(self))
+    }
+
+    fn schema_search_path(&self) -> Vec<String> {
+        vec!["public".to_string()]
+    }
+
+    fn server_version(&self) -> Result<Version> {
+        Ok(Version {
+            major: 0,
+            minor: 0,
+            patch: 0,
+        })
     }
 }
 

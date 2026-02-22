@@ -6,7 +6,7 @@ mod error;
 mod ir;
 mod statement;
 
-pub use adapter::DatabaseAdapter;
+pub use adapter::{DatabaseAdapter, Transaction};
 pub use config::{ConnectionConfig, Version};
 pub use dialect::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, Dialect, EquivalencePolicy,

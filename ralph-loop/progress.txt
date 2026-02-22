@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For RAII transaction contracts, centralize `COMMIT`/`ROLLBACK` behavior inside `stateql_core::Transaction` and keep adapter implementations focused on connection-specific `execute`/`begin` plumbing.
 - For trait-contract expansion tasks, lock the required method set with a dedicated core integration test (`crates/core/tests/*_contract_test.rs`) that calls each trait method, then update every dialect crate in the same change so `cargo check --workspace` stays green.
 - Keep shared cross-crate contract types in a dedicated `src/*.rs` module and re-export them from `lib.rs` so integration tests and downstream crates can use stable root paths.
 - Task boundary tests live under `crates/core/tests/` and can enforce source-level boundaries by reading `src/*.rs` via `env!("CARGO_MANIFEST_DIR")`.
@@ -63,4 +64,16 @@
 - **Learnings:**
   - Patterns discovered: Keep unimplemented dialect stub paths fail-fast by returning typed stage errors instead of placeholder success values, so later parser/generator work cannot silently pass.
   - Gotchas encountered: Plan text mentions typed errors for `normalize`, but `normalize` has no `Result` in the contract; treated as no-op and used typed errors for `to_sql`/`connect`/stub parse+generate paths.
+---
+
+## 2026-02-22 - task-5: Implement Single-Connection Adapter + RAII Transaction
+- What was implemented: Finalized `DatabaseAdapter` to the v1 synchronous single-connection contract (`export_schema`, `execute(&self, &str)`, `begin`, `schema_search_path`, `server_version`) and introduced RAII `Transaction` with `execute`, `commit`, and drop-time rollback; added dedicated Task 5 RED->GREEN tests plus an in-memory reusable fake adapter test foundation based on interior mutability (`RefCell`).
+- Files changed: `crates/core/src/adapter.rs`, `crates/core/src/lib.rs`, `crates/core/tests/transaction_raii_test.rs`, `crates/core/tests/adapter_sync_contract_test.rs`, `crates/core/tests/support/fake_adapter.rs`, `crates/core/tests/dialect_contract_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test transaction_raii_test`: PASS (2 passed, 0 failed).
+  - `cargo nextest run -p stateql-core --test adapter_sync_contract_test`: PASS (2 passed, 0 failed).
+  - `crates/core/tests/support/fake_adapter.rs`: PASS (added reusable in-memory fake with execution log, begin/commit/rollback counters, configurable schema/version/failure hooks for Task 24-30 reuse).
+- **Learnings:**
+  - Patterns discovered: Signature contracts that must remain sync-only can be locked with function-pointer type assertions (`fn(&T, &str) -> Result<()>`, `for<'a> fn(&'a mut T) -> Result<Transaction<'a>>`) to fail fast if async/Future leaks into core traits.
+  - Gotchas encountered: A default `begin()` implementation that builds `Transaction` from `self` breaks on unsized `Self`; keep `begin` explicit in impls and expose `Transaction::new` for adapter implementers.
 ---
