@@ -13,7 +13,7 @@ The implementation plan is in `docs/plans/2026-02-21-stateql-v1-plan.md`.
 - New code goes under `crates/**`.
 - Use the `execute-plan` skill for each task. It enforces TDD (RED -> GREEN -> REFACTOR) and human review checkpoints.
 - Each task has a **DoD** (Definition of Done) section in the plan. All DoD items must pass before marking the task as complete.
-- Commit using the exact message specified in the plan's **Commit** section for the task.
+- **Do NOT run `git commit`.** Your sandbox cannot write to `.git/`. Instead, write the plan-specified commit message (just the `-m` string) to `ralph-loop/.commit-msg`. The loop script will commit for you.
 
 ## Your Task
 
@@ -24,7 +24,7 @@ The implementation plan is in `docs/plans/2026-02-21-stateql-v1-plan.md`.
    - If no task is eligible (all remaining tasks are blocked by incomplete deps), report which tasks are blocked and why, then end your turn.
 4. Read the corresponding task section in `docs/plans/2026-02-21-stateql-v1-plan.md` for full details.
 5. Use the `execute-plan` skill to implement that ONE task following TDD.
-6. After all DoD items pass, commit using the plan's specified commit message.
+6. After all DoD items pass, write the plan-specified commit message to `ralph-loop/.commit-msg`.
 7. Update `ralph-loop/prd.json`: set `passes: true` for the completed story.
 8. Append progress to `ralph-loop/progress.txt`.
 
@@ -53,4 +53,4 @@ Update this section as you discover new patterns.
 If ALL stories in `ralph-loop/prd.json` have `passes: true`, reply with EXACTLY:
 <promise>COMPLETE</promise>
 
-Otherwise end your turn normally after committing and updating the tracking files.
+Otherwise end your turn normally after writing the commit message and updating the tracking files.
