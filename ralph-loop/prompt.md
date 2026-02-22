@@ -12,6 +12,7 @@ The implementation plan is in `docs/plans/2026-02-21-stateql-v1-plan.md`.
 - `reference/sqldef/**` is reference-only. Never edit it.
 - New code goes under `crates/**`.
 - Use the `execute-plan` skill for each task. It enforces TDD (RED -> GREEN -> REFACTOR) and human review checkpoints.
+- **RED means "compiles but test fails"**: After writing a test, add minimal stubs (empty structs, `todo!()` functions) so `cargo test` compiles and runs. A compilation error is NOT RED — keep adding scaffolding until the test actually executes and fails with an assertion error or `todo!()` panic.
 - Each task has a **DoD** (Definition of Done) section in the plan. All DoD items must pass before marking the task as complete.
 - **Do NOT run `git commit`.** Your sandbox cannot write to `.git/`. Instead, write the plan-specified commit message (just the `-m` string) to `ralph-loop/.commit-msg`. The loop script will commit for you.
 - **Implement exactly ONE task per turn.** After completing one task, update tracking files and end your turn. Do NOT start the next task — the loop script handles iteration.
