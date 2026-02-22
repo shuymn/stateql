@@ -8,7 +8,10 @@ mod ir;
 mod statement;
 
 pub use adapter::{DatabaseAdapter, Transaction};
-pub use annotation::{AnnotationExtractor, RenameAnnotation};
+pub use annotation::{
+    AnnotationAttachment, AnnotationExtractor, AnnotationTarget, RenameAnnotation,
+    attach_annotations,
+};
 pub use config::{ConnectionConfig, Version};
 pub use dialect::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, Dialect, EquivalencePolicy,
