@@ -514,7 +514,7 @@
       "deps": [
         "task-2"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "task-38b",
