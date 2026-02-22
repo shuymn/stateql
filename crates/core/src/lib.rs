@@ -16,6 +16,8 @@ pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
 };
 pub use ir::{
-    DataType, Ident, QualifiedName, SchemaObject, Value, float_total_cmp, value_total_eq,
+    BinaryOperator, ComparisonOp, DataType, Expr, Ident, IsTest, Literal, QualifiedName,
+    SchemaObject, SetQuantifier, SubQuery, UnaryOperator, Value, WindowSpec, float_total_cmp,
+    value_total_eq,
 };
 pub use statement::Statement;
