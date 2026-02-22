@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For error-layering boundaries, keep `thiserror`-derived typed errors in `crates/core` and enforce no `anyhow`/`miette` usage with boundary tests, while routing CLI runtime failures through one presentation module that prefixes typed stage categories and adds operator context via `anyhow::Context` + `miette` rendering.
 - For dialect-contract stabilization, keep contract semantics executable by pairing `Dialect` rustdoc doctests with a maintained `crates/core/examples/dialect_template.rs` and enforce link correctness crate-wide via `#![deny(rustdoc::broken_intra_doc_links)]`.
 - For single-binary clap CLI mode handling, keep `--apply/--dry-run/--export` mutually exclusive, infer `Mode::DryRun` only when desired SQL input exists (`--file` or non-terminal stdin), and route all dialects through one `run_with_dialect` helper so `enable_drop` and output behavior stay consistent.
 - For CLI dialect feature gating, keep dialect crates as optional `dep:` feature targets and derive accepted subcommands/usage text from one cfg-driven enabled-dialect list so disabled dialect builds cannot reference unavailable crates.
@@ -957,4 +958,19 @@
 - **Learnings:**
   - Patterns discovered: Keep dialect contract semantics executable in rustdoc and mirror that implementation shape in one template example file to reduce drift between guidance and code.
   - Gotchas encountered: Adding crate-level broken-link denial is safe once rustdoc links use fully-qualified paths (`crate::...`) for enum variants in trait docs.
+---
+## 2026-02-22 - task-45b: Enforce Error Layering Boundaries (`thiserror` / `anyhow` / `miette`)
+- What was implemented: Added boundary enforcement tests for core and CLI error layering; migrated `crates/core` errors to `thiserror`-derived typed enums; introduced a dedicated CLI presentation module (`error_presentation.rs`) that preserves typed stage classification (`[parse|diff|generate|execute]`) while adding operator context via `anyhow::Context` and rendering via `miette`; documented the layering contract in `docs/2026-02-21-error-layering.md`.
+- Files changed: `crates/core/Cargo.toml`, `crates/core/src/error.rs`, `crates/core/tests/error_layering_boundary_test.rs`, `crates/cli/Cargo.toml`, `crates/cli/src/main.rs`, `crates/cli/src/error_presentation.rs`, `crates/cli/tests/error_presentation_test.rs`, `docs/2026-02-21-error-layering.md`, `Cargo.lock`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test error_layering_boundary_test`: PASS (1 passed, 0 failed).
+  - `cargo nextest run -p stateql-cli --test error_presentation_test`: PASS (1 passed, 0 failed).
+  - `cargo tree -p stateql-core | rg 'anyhow|miette'`: PASS (0 hits; `NO_HIT`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (207 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Centralizing typed-error-to-presentation conversion in one CLI module keeps runtime context/presentation concerns out of core while making category-preservation behavior testable as a single boundary.
+  - Gotchas encountered: `miette::Report::new` requires `Diagnostic`; for `anyhow::Error` chains, build the report via `miette::miette!("{anyhow_error:#}")` after applying `anyhow::Context`.
 ---
