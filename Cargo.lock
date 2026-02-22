@@ -1849,6 +1849,7 @@ dependencies = [
  "stateql-dialect-mssql",
  "stateql-dialect-mysql",
  "stateql-dialect-postgres",
+ "stateql-dialect-sqlite",
 ]
 
 [[package]]

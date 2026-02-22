@@ -1,0 +1,392 @@
+dialects:
+  postgres:
+    entries:
+      - id: cmd/psqldef/tests_tables.yml::CreateTable
+        status: ported
+        case: 0001-basic-create.yml::basic_create_table
+      - id: cmd/psqldef/tests_indices.yml::CreateTableAddColumn
+        status: ported
+        case: 0002-add-index.yml::add_index_to_existing_table
+      - id: cmd/psqldef/tests_tables.yml::PortedCase03
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_03
+      - id: cmd/psqldef/tests_tables.yml::PortedCase04
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_04
+      - id: cmd/psqldef/tests_tables.yml::PortedCase05
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_05
+      - id: cmd/psqldef/tests_tables.yml::PortedCase06
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_06
+      - id: cmd/psqldef/tests_tables.yml::PortedCase07
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_07
+      - id: cmd/psqldef/tests_tables.yml::PortedCase08
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_08
+      - id: cmd/psqldef/tests_tables.yml::PortedCase09
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_09
+      - id: cmd/psqldef/tests_tables.yml::PortedCase10
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_10
+      - id: cmd/psqldef/tests_tables.yml::PortedCase11
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_11
+      - id: cmd/psqldef/tests_tables.yml::PortedCase12
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_12
+      - id: cmd/psqldef/tests_tables.yml::PortedCase13
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_13
+      - id: cmd/psqldef/tests_tables.yml::PortedCase14
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_14
+      - id: cmd/psqldef/tests_tables.yml::PortedCase15
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_15
+      - id: cmd/psqldef/tests_tables.yml::PortedCase16
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_16
+      - id: cmd/psqldef/tests_tables.yml::PortedCase17
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_17
+      - id: cmd/psqldef/tests_tables.yml::PortedCase18
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_18
+      - id: cmd/psqldef/tests_tables.yml::PortedCase19
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_19
+      - id: cmd/psqldef/tests_tables.yml::PortedCase20
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_20
+      - id: cmd/psqldef/tests_tables.yml::PortedCase21
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_21
+      - id: cmd/psqldef/tests_tables.yml::PortedCase22
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_22
+      - id: cmd/psqldef/tests_tables.yml::PortedCase23
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_23
+      - id: cmd/psqldef/tests_tables.yml::PortedCase24
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_24
+      - id: cmd/psqldef/tests_tables.yml::PortedCase25
+        status: ported
+        case: 0010-ported-basics.yml::ported_case_25
+      - id: cmd/psqldef/tests_views.yml::CreateView
+        status: skipped
+        reason: View assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/psqldef/tests_constraints.yml::AlterConstraint
+        status: skipped
+        reason: Constraint assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/psqldef/tests_dependency_ordering.yml::DependencyOrdering
+        status: skipped
+        reason: Dependency-order assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/psqldef/tests_enable_drop.yml::EnableDropDiagnostics
+        status: skipped
+        reason: Destructive-op assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/psqldef/tests_preserve_quotes.yml::LegacyIgnoreQuotes
+        status: skipped
+        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
+        tracking: task-43d
+
+  sqlite:
+    entries:
+      - id: cmd/sqlite3def/tests.yml::PortedCase01
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_01
+      - id: cmd/sqlite3def/tests.yml::PortedCase02
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_02
+      - id: cmd/sqlite3def/tests.yml::PortedCase03
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_03
+      - id: cmd/sqlite3def/tests.yml::PortedCase04
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_04
+      - id: cmd/sqlite3def/tests.yml::PortedCase05
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_05
+      - id: cmd/sqlite3def/tests.yml::PortedCase06
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_06
+      - id: cmd/sqlite3def/tests.yml::PortedCase07
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_07
+      - id: cmd/sqlite3def/tests.yml::PortedCase08
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_08
+      - id: cmd/sqlite3def/tests.yml::PortedCase09
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_09
+      - id: cmd/sqlite3def/tests.yml::PortedCase10
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_10
+      - id: cmd/sqlite3def/tests.yml::PortedCase11
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_11
+      - id: cmd/sqlite3def/tests.yml::PortedCase12
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_12
+      - id: cmd/sqlite3def/tests.yml::PortedCase13
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_13
+      - id: cmd/sqlite3def/tests.yml::PortedCase14
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_14
+      - id: cmd/sqlite3def/tests.yml::PortedCase15
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_15
+      - id: cmd/sqlite3def/tests.yml::PortedCase16
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_16
+      - id: cmd/sqlite3def/tests.yml::PortedCase17
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_17
+      - id: cmd/sqlite3def/tests.yml::PortedCase18
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_18
+      - id: cmd/sqlite3def/tests.yml::PortedCase19
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_19
+      - id: cmd/sqlite3def/tests.yml::PortedCase20
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_20
+      - id: cmd/sqlite3def/tests.yml::PortedCase21
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_21
+      - id: cmd/sqlite3def/tests.yml::PortedCase22
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_22
+      - id: cmd/sqlite3def/tests.yml::PortedCase23
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_23
+      - id: cmd/sqlite3def/tests.yml::PortedCase24
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_24
+      - id: cmd/sqlite3def/tests.yml::PortedCase25
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_25
+      - id: cmd/sqlite3def/tests_triggers.yml::CreateTrigger
+        status: skipped
+        reason: Trigger assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/sqlite3def/tests_dependency_ordering.yml::DependencyOrdering
+        status: skipped
+        reason: Dependency-order assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/sqlite3def/tests_enable_drop.yml::EnableDropDiagnostics
+        status: skipped
+        reason: Destructive-op assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/sqlite3def/tests_preserve_quotes.yml::LegacyIgnoreQuotes
+        status: skipped
+        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
+        tracking: task-43d
+      - id: cmd/sqlite3def/tests.yml::RenameColumnWithTypeChange
+        status: skipped
+        reason: Rename assertion migration is handled in task-43c.
+        tracking: task-43c
+
+  mysql:
+    entries:
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase01
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_01
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase02
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_02
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase03
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_03
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase04
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_04
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase05
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_05
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase06
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_06
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase07
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_07
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase08
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_08
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase09
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_09
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase10
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_10
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase11
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_11
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase12
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_12
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase13
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_13
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase14
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_14
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase15
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_15
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase16
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_16
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase17
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_17
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase18
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_18
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase19
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_19
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase20
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_20
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase21
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_21
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase22
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_22
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase23
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_23
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase24
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_24
+      - id: cmd/mysqldef/tests_tables.yml::PortedCase25
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_25
+      - id: cmd/mysqldef/tests_views_triggers.yml::CreateView
+        status: skipped
+        reason: View and trigger assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mysqldef/tests_constraints.yml::AlterConstraint
+        status: skipped
+        reason: Constraint assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mysqldef/tests_partition.yml::PartitionDiff
+        status: skipped
+        reason: Partition assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mysqldef/tests_enable_drop.yml::EnableDropDiagnostics
+        status: skipped
+        reason: Destructive-op assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mysqldef/tests_preserve_quotes.yml::LegacyIgnoreQuotes
+        status: skipped
+        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
+        tracking: task-43d
+
+  mssql:
+    entries:
+      - id: cmd/mssqldef/tests.yml::PortedCase01
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_01
+      - id: cmd/mssqldef/tests.yml::PortedCase02
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_02
+      - id: cmd/mssqldef/tests.yml::PortedCase03
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_03
+      - id: cmd/mssqldef/tests.yml::PortedCase04
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_04
+      - id: cmd/mssqldef/tests.yml::PortedCase05
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_05
+      - id: cmd/mssqldef/tests.yml::PortedCase06
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_06
+      - id: cmd/mssqldef/tests.yml::PortedCase07
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_07
+      - id: cmd/mssqldef/tests.yml::PortedCase08
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_08
+      - id: cmd/mssqldef/tests.yml::PortedCase09
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_09
+      - id: cmd/mssqldef/tests.yml::PortedCase10
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_10
+      - id: cmd/mssqldef/tests.yml::PortedCase11
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_11
+      - id: cmd/mssqldef/tests.yml::PortedCase12
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_12
+      - id: cmd/mssqldef/tests.yml::PortedCase13
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_13
+      - id: cmd/mssqldef/tests.yml::PortedCase14
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_14
+      - id: cmd/mssqldef/tests.yml::PortedCase15
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_15
+      - id: cmd/mssqldef/tests.yml::PortedCase16
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_16
+      - id: cmd/mssqldef/tests.yml::PortedCase17
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_17
+      - id: cmd/mssqldef/tests.yml::PortedCase18
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_18
+      - id: cmd/mssqldef/tests.yml::PortedCase19
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_19
+      - id: cmd/mssqldef/tests.yml::PortedCase20
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_20
+      - id: cmd/mssqldef/tests.yml::PortedCase21
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_21
+      - id: cmd/mssqldef/tests.yml::PortedCase22
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_22
+      - id: cmd/mssqldef/tests.yml::PortedCase23
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_23
+      - id: cmd/mssqldef/tests.yml::PortedCase24
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_24
+      - id: cmd/mssqldef/tests.yml::PortedCase25
+        status: ported
+        case: 0001-ported-basics.yml::ported_case_25
+      - id: cmd/mssqldef/tests_fk_deps.yml::ForeignKeyDependencies
+        status: skipped
+        reason: Foreign-key assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mssqldef/tests_dependency_ordering.yml::DependencyOrdering
+        status: skipped
+        reason: Dependency-order assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mssqldef/tests_enable_drop.yml::EnableDropDiagnostics
+        status: skipped
+        reason: Destructive-op assertion migration is handled in task-43c.
+        tracking: task-43c
+      - id: cmd/mssqldef/tests_preserve_quotes.yml::LegacyIgnoreQuotes
+        status: skipped
+        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
+        tracking: task-43d
+      - id: cmd/mssqldef/tests.yml::RenameTable
+        status: skipped
+        reason: Rename assertion migration is handled in task-43c.
+        tracking: task-43c

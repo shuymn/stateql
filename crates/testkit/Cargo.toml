@@ -19,3 +19,4 @@ serde_yaml = "0.9.34"
 stateql-dialect-postgres = { path = "../dialect-postgres" }
 stateql-dialect-mysql = { path = "../dialect-mysql" }
 stateql-dialect-mssql = { path = "../dialect-mssql" }
+stateql-dialect-sqlite = { path = "../dialect-sqlite" }

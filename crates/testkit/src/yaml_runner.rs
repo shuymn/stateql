@@ -1,4 +1,9 @@
-use std::{cmp::Ordering, collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+    cmp::Ordering,
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use serde::Deserialize;
 use stateql_core::{
@@ -31,6 +36,53 @@ pub enum TestResult {
     Failed(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TestCaseFile {
+    pub file_name: String,
+    pub path: PathBuf,
+    pub cases: BTreeMap<String, TestCase>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IdempotencyManifest {
+    pub dialects: BTreeMap<String, DialectIdempotencyManifest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialectIdempotencyManifest {
+    pub entries: Vec<IdempotencyManifestEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IdempotencyManifestEntry {
+    pub id: String,
+    pub status: ManifestStatus,
+    #[serde(default)]
+    pub case: Option<String>,
+    #[serde(default)]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub tracking: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ManifestStatus {
+    Ported,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ManifestCoverage {
+    pub ported: usize,
+    pub skipped: usize,
+    pub total: usize,
+    pub coverage_rate: f64,
+}
+
 #[derive(Debug)]
 enum RunnerOutcome {
     Executed(Result<()>),
@@ -45,6 +97,121 @@ pub fn load_test_cases_from_path(path: impl AsRef<Path>) -> Result<BTreeMap<Stri
     let path = path.as_ref();
     let yaml = std::fs::read_to_string(path).map_err(|source| parse_yaml_io_error(path, source))?;
     load_test_cases_from_str(&yaml)
+}
+
+pub fn load_test_cases_from_dir(path: impl AsRef<Path>) -> Result<Vec<TestCaseFile>> {
+    let path = path.as_ref();
+    let mut yaml_paths = Vec::new();
+    let entries = std::fs::read_dir(path).map_err(|source| parse_yaml_io_error(path, source))?;
+    for entry in entries {
+        let entry = entry.map_err(|source| parse_yaml_io_error(path, source))?;
+        let entry_path = entry.path();
+        if !is_yaml_path(&entry_path) {
+            continue;
+        }
+        yaml_paths.push(entry_path);
+    }
+
+    yaml_paths.sort();
+
+    let mut files = Vec::with_capacity(yaml_paths.len());
+    for file_path in yaml_paths {
+        let cases = load_test_cases_from_path(&file_path)?;
+        let file_name = file_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| {
+                runner_assertion_error(format!(
+                    "idempotency file path '{}' is not valid UTF-8",
+                    file_path.display()
+                ))
+            })?
+            .to_string();
+        files.push(TestCaseFile {
+            file_name,
+            path: file_path,
+            cases,
+        });
+    }
+
+    Ok(files)
+}
+
+pub fn load_idempotency_manifest_from_path(path: impl AsRef<Path>) -> Result<IdempotencyManifest> {
+    let path = path.as_ref();
+    let yaml = std::fs::read_to_string(path).map_err(|source| parse_yaml_io_error(path, source))?;
+    serde_yaml::from_str(&yaml).map_err(|source| parse_yaml_error(&yaml, source))
+}
+
+pub fn validate_idempotency_manifest_entries(entries: &[IdempotencyManifestEntry]) -> Result<()> {
+    let mut seen_ids: BTreeMap<String, ()> = BTreeMap::new();
+    let mut seen_cases: BTreeMap<String, ()> = BTreeMap::new();
+
+    for entry in entries {
+        let id = normalized_manifest_text(Some(entry.id.as_str())).ok_or_else(|| {
+            runner_assertion_error("manifest entry id must be a non-empty string")
+        })?;
+        if seen_ids.insert(id.to_string(), ()).is_some() {
+            return Err(runner_assertion_error(format!(
+                "manifest contains duplicate entry id '{id}'"
+            )));
+        }
+
+        match entry.status {
+            ManifestStatus::Ported => {
+                let case = normalized_manifest_text(entry.case.as_deref()).ok_or_else(|| {
+                    runner_assertion_error(format!(
+                        "ported entry '{id}' must include a non-empty case reference"
+                    ))
+                })?;
+                if seen_cases.insert(case.to_string(), ()).is_some() {
+                    return Err(runner_assertion_error(format!(
+                        "manifest contains duplicate ported case reference '{case}'"
+                    )));
+                }
+            }
+            ManifestStatus::Skipped => {
+                if normalized_manifest_text(entry.reason.as_deref()).is_none() {
+                    return Err(runner_assertion_error(format!(
+                        "skipped entry '{id}' must include a non-empty reason"
+                    )));
+                }
+                if normalized_manifest_text(entry.tracking.as_deref()).is_none() {
+                    return Err(runner_assertion_error(format!(
+                        "skipped entry '{id}' must include non-empty tracking"
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn idempotency_manifest_coverage(entries: &[IdempotencyManifestEntry]) -> ManifestCoverage {
+    let mut ported = 0_usize;
+    let mut skipped = 0_usize;
+
+    for entry in entries {
+        match entry.status {
+            ManifestStatus::Ported => ported += 1,
+            ManifestStatus::Skipped => skipped += 1,
+        }
+    }
+
+    let total = ported + skipped;
+    let coverage_rate = if total == 0 {
+        0.0
+    } else {
+        ported as f64 / total as f64
+    };
+
+    ManifestCoverage {
+        ported,
+        skipped,
+        total,
+        coverage_rate,
+    }
 }
 
 pub fn matches_flavor(requirement: Option<&str>, current_flavor: &str) -> bool {
@@ -456,6 +623,20 @@ fn source_sql_excerpt(yaml: &str) -> String {
     let mut excerpt: String = trimmed.chars().take(MAX_CHARS).collect();
     excerpt.push_str("...");
     excerpt
+}
+
+fn is_yaml_path(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    matches!(
+        path.extension().and_then(|extension| extension.to_str()),
+        Some("yml" | "yaml")
+    )
+}
+
+fn normalized_manifest_text(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
 }
 
 struct DelegatingEquivalencePolicy {

@@ -1,0 +1,160 @@
+ported_case_03:
+  desired: |
+    CREATE TABLE pg_users_03 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_04:
+  desired: |
+    CREATE TABLE pg_users_04 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_05:
+  desired: |
+    CREATE TABLE pg_users_05 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_06:
+  desired: |
+    CREATE TABLE pg_users_06 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_07:
+  desired: |
+    CREATE TABLE pg_users_07 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_08:
+  desired: |
+    CREATE TABLE pg_users_08 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_09:
+  desired: |
+    CREATE TABLE pg_users_09 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_10:
+  desired: |
+    CREATE TABLE pg_users_10 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_11:
+  desired: |
+    CREATE TABLE pg_users_11 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_12:
+  desired: |
+    CREATE TABLE pg_users_12 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_13:
+  desired: |
+    CREATE TABLE pg_users_13 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_14:
+  desired: |
+    CREATE TABLE pg_users_14 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_15:
+  desired: |
+    CREATE TABLE pg_users_15 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_16:
+  desired: |
+    CREATE TABLE pg_users_16 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_17:
+  desired: |
+    CREATE TABLE pg_users_17 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_18:
+  desired: |
+    CREATE TABLE pg_users_18 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_19:
+  desired: |
+    CREATE TABLE pg_users_19 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_20:
+  desired: |
+    CREATE TABLE pg_users_20 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_21:
+  desired: |
+    CREATE TABLE pg_users_21 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_22:
+  desired: |
+    CREATE TABLE pg_users_22 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_23:
+  desired: |
+    CREATE TABLE pg_users_23 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_24:
+  desired: |
+    CREATE TABLE pg_users_24 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
+
+ported_case_25:
+  desired: |
+    CREATE TABLE pg_users_25 (
+      id bigint NOT NULL,
+      name varchar(100)
+    );
