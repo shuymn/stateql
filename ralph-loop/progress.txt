@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For single-binary clap CLI mode handling, keep `--apply/--dry-run/--export` mutually exclusive, infer `Mode::DryRun` only when desired SQL input exists (`--file` or non-terminal stdin), and route all dialects through one `run_with_dialect` helper so `enable_drop` and output behavior stay consistent.
 - For CLI dialect feature gating, keep dialect crates as optional `dep:` feature targets and derive accepted subcommands/usage text from one cfg-driven enabled-dialect list so disabled dialect builds cannot reference unavailable crates.
 - For quote-aware YAML migration, convert `LegacyIgnoreQuotes` manifest entries from `skipped` to concrete `ported` case references only alongside real quote-sensitive fixtures and enforce the boundary with one dedicated regression suite (`yaml_quote_aware_regression_test`) plus shared SQL comparison helpers (`sql_matches_quote_aware`).
 - For YAML assertion migration gates, keep corpus per dialect/group under tests/<dialect>/assertions/<group>/ and compare manifest-vs-corpus through shared testkit helpers (manifest_ported_case_references/yaml_case_references) so count+coverage drift checks stay single-sourced.
@@ -926,4 +927,19 @@
 - **Learnings:**
   - Patterns discovered: Integration tests can lock default-feature CLI exposure by asserting usage text and disabled-subcommand exit behavior, which catches accidental ungated dialect registration early.
   - Gotchas encountered: Clippy’s `const_is_empty` and `vec_init_then_push` lints trigger quickly on cfg-driven dialect lists under `-D warnings`; a cfg-gated `vec![...]` initializer keeps the feature table explicit while remaining lint-clean.
+---
+## 2026-02-22 - task-44: Implement CLI Single-Binary Subcommands
+- What was implemented: Replaced the placeholder CLI with a `clap`-based single-binary dialect subcommand interface (`stateql <dialect>`), added mutually-exclusive mode flags (`--apply/--dry-run/--export`) with safe-by-default dry-run inference when desired SQL input is present, normalized dialect-specific connection flags into `stateql_core::ConnectionConfig`, and wired all dialect commands through the core `Orchestrator`. Added dedicated Task 44 integration suites for CLI shape/mode semantics and dialect connection flag acceptance.
+- Files changed: `crates/cli/src/main.rs`, `crates/cli/Cargo.toml`, `crates/cli/tests/cli_shape_test.rs`, `crates/cli/tests/cli_connection_flags_test.rs`, `crates/cli/tests/feature_gate_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-cli --test cli_shape_test`: PASS (3 passed, 0 failed).
+  - `cli_shape_test` explicitly verifies safe-by-default dry-run behavior for both `--file` and stdin inputs, plus `--apply`/`--export` conflict handling with `--enable-drop`: PASS.
+  - `cargo nextest run -p stateql-cli --test cli_connection_flags_test`: PASS (3 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (205 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep dialect-specific connection arguments as thin structs around a shared mode/input pipeline, then normalize to `ConnectionConfig` in one helper to avoid drift across subcommands.
+  - Gotchas encountered: Integration tests that feed stdin into child processes must close the child stdin handle (`drop(stdin)`) before waiting, or tests can hang indefinitely under `nextest`.
 ---
