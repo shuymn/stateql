@@ -1,6 +1,6 @@
 use stateql_core::{
     ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, GenerateError, Ident, Result, SchemaObject,
-    Statement, Transaction, Version,
+    Statement, Table, Transaction, Version,
 };
 
 #[derive(Debug, Default)]
@@ -41,9 +41,7 @@ impl Dialect for ContractDialect {
     }
 
     fn parse(&self, _sql: &str) -> Result<Vec<SchemaObject>> {
-        Ok(vec![SchemaObject::Table {
-            name: "users".to_string(),
-        }])
+        Ok(vec![SchemaObject::Table(Table::named("users"))])
     }
 
     fn generate_ddl(&self, _ops: &[DiffOp]) -> Result<Vec<Statement>> {

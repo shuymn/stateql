@@ -1,7 +1,5 @@
-use stateql_core::SchemaObject;
+use stateql_core::{SchemaObject, Table};
 
 pub fn single_table_fixture(name: &str) -> Vec<SchemaObject> {
-    vec![SchemaObject::Table {
-        name: name.to_string(),
-    }]
+    vec![SchemaObject::Table(Table::named(name))]
 }
