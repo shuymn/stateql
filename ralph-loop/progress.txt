@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For PostgreSQL generator contracts, keep SQL emission in a single op-dispatch (`emit_op`) and centralize unsupported payload failures through `unsupported_diff_op`, with conservative `DropView + CreateView -> CREATE OR REPLACE VIEW` optimization only when compatibility is provable from payload.
 - For PostgreSQL parser fail-fast behavior, derive per-statement metadata from parser spans, trim leading whitespace before computing line numbers, and route conversion failures through one wrapper (`statement_conversion_error`) so `statement_index`/`source_sql`/`source_location` stay consistent.
 - For export idempotency checks, keep the orchestrator’s export pipeline as a reusable helper (`export_sql_from_input`) plus a comparison helper (`export_roundtrip_matches`) so round-trip verification logic stays aligned with runtime export rendering.
 - For orchestrator export mode, branch on `Mode` before diff generation and keep `--export` on a dedicated `export_schema -> parse -> normalize -> to_sql` path so desired SQL parsing and diff/executor paths are never touched.
@@ -542,4 +543,19 @@
 - **Learnings:**
   - Patterns discovered: Use parser-span-based metadata plus a single error-wrapper helper to keep statement-level parse diagnostics deterministic across all conversion errors.
   - Gotchas encountered: In this sandbox, Cargo cannot write to the default home cache; running with `CARGO_HOME=/tmp/cargo` avoids permission failures during dependency resolution/build.
+---
+## 2026-02-22 - task-32: PostgreSQL Full DDL Generator + Unsupported-Op Contract
+- What was implemented: Added a full PostgreSQL DDL generator module (`generator.rs`) and wired `PostgresDialect::generate_ddl` to it; implemented SQL emission for the complete current `DiffOp` surface, centralized unsupported payload failures via `unsupported_diff_op`, and added conservative `DROP VIEW + CREATE VIEW` to `CREATE OR REPLACE VIEW` optimization with compatibility checks.
+- Files changed: `crates/dialect-postgres/src/generator.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-postgres/tests/generator_contract_test.rs`, `crates/dialect-postgres/tests/generator_supported_ops_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-postgres --test generator_contract_test`: PASS (3 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-postgres --test generator_supported_ops_test`: PASS (3 passed, 0 failed).
+  - `generator_contract_test` consumes Task 13 fixture coverage (`all_diffop_variants()`) via `#[path = "../../core/tests/support/diffop_fixtures.rs"]` and classifies all variants exhaustively: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (104 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keeping generator dispatch and unsupported construction centralized makes it straightforward to enforce fail-fast behavior for malformed variant payloads while still supporting an exhaustive `DiffOp` match.
+  - Gotchas encountered: Reusing `crates/core/tests/support/diffop_fixtures.rs` cross-crate in dialect tests needs a local `#[allow(dead_code)]` on the included module to keep workspace `-D warnings` clean.
 ---
