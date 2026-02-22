@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For PostgreSQL adapter/export contracts, centralize catalog SQL in `export_queries.rs` and keep `connect()` fail-fast by validating `SHOW server_version` (`13+`) plus parsing `SHOW search_path` once into normalized path entries (drop `$user`/`pg_catalog`/`pg_temp*`) before diff wiring.
 - For PostgreSQL normalization contracts, keep object-level normalization in `normalize_object` and cross-object canonicalization in a schema pass (`normalize_schema`) invoked from parser output so sequence/partition folding can run before core diff without changing the core `Dialect::normalize(&mut SchemaObject)` trait boundary.
 - For PostgreSQL generator contracts, keep SQL emission in a single op-dispatch (`emit_op`) and centralize unsupported payload failures through `unsupported_diff_op`, with conservative `DropView + CreateView -> CREATE OR REPLACE VIEW` optimization only when compatibility is provable from payload.
 - For PostgreSQL parser fail-fast behavior, derive per-statement metadata from parser spans, trim leading whitespace before computing line numbers, and route conversion failures through one wrapper (`statement_conversion_error`) so `statement_index`/`source_sql`/`source_location` stay consistent.
@@ -573,4 +574,21 @@
 - **Learnings:**
   - Patterns discovered: Keep partition-child lineage in parser metadata (`postgres.partition_parent_*`) and perform fold/removal in a single schema-level normalizer pass so parent partition state stays deterministic and child tables never leak into diff input.
   - Gotchas encountered: `pg_query` cannot deparse partition key/bound sub-nodes as top-level SQL; robust conversion must read protobuf node variants (`PartitionElem`, `AConst`, `ColumnRef`) directly instead of relying on `deparse()`.
+---
+## 2026-02-22 - task-33b: PostgreSQL `to_sql` + Adapter + Export Queries
+- What was implemented: Added PostgreSQL adapter runtime (`connect`, `export_schema`, `schema_search_path`, `server_version`, `execute`, `begin`) on a single synchronous connection, migrated catalog SQL constants into `export_queries.rs`, implemented canonical `to_sql` rendering through generator-backed create-op mapping (including partition child re-emission), and replaced dialect stubs with production wiring plus surface tests for round-trip stability and version gating.
+- Files changed: `crates/dialect-postgres/src/adapter.rs`, `crates/dialect-postgres/src/export_queries.rs`, `crates/dialect-postgres/src/to_sql.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-postgres/Cargo.toml`, `crates/dialect-postgres/tests/adapter_export_schema_test.rs`, `crates/dialect-postgres/tests/dialect_surface_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-postgres --test dialect_surface_test`: PASS (3 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-postgres --test adapter_export_schema_test`: PASS (2 passed, 0 failed, 1 skipped).
+  - `cargo nextest run -p stateql-dialect-postgres --test adapter_export_schema_test --run-ignored ignored-only`: PASS (1 passed, 0 failed, 2 skipped).
+  - `rg -n "pub async fn" crates/dialect-postgres/src`: PASS (0 hit).
+  - `dialect_surface_test` explicit `<13` rejection check: PASS (`connect_rejects_postgres_versions_below_13`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (112 passed, 0 failed, 1 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep adapter query text and schema export assembly separated (`export_queries.rs` + row-decoder/render helpers) so catalog coverage changes do not leak into connection/version/search-path handling.
+  - Gotchas encountered: `ExecutionError` display omits inner source messages, so tests that validate fail-fast details should assert on `source.to_string()` instead of top-level `Error::to_string()`.
 ---
