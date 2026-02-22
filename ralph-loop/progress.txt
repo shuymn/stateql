@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For trait-contract expansion tasks, lock the required method set with a dedicated core integration test (`crates/core/tests/*_contract_test.rs`) that calls each trait method, then update every dialect crate in the same change so `cargo check --workspace` stays green.
 - Keep shared cross-crate contract types in a dedicated `src/*.rs` module and re-export them from `lib.rs` so integration tests and downstream crates can use stable root paths.
 - Task boundary tests live under `crates/core/tests/` and can enforce source-level boundaries by reading `src/*.rs` via `env!("CARGO_MANIFEST_DIR")`.
 - Keep early-phase core placeholders as minimal re-exported stubs in `crates/core/src/lib.rs` so downstream dialect crates continue compiling.
@@ -51,4 +52,15 @@
 - **Learnings:**
   - Patterns discovered: Contract-foundation tasks can use constructor-by-literal tests in `crates/core/tests/` to lock field names/types before trait signatures start depending on them.
   - Gotchas encountered: commit remains blocked in this sandbox (`.git/index.lock` cannot be created), so the plan-specified commit command could not complete.
+---
+
+## 2026-02-22 - task-4: Expand Dialect Trait to Full Contract
+- What was implemented: Expanded `stateql_core::Dialect` to the full v1 contract (`to_sql`, `normalize`, `equivalence_policy`, `quote_ident`, `batch_separator`, `connect`) with `name()` returning `&str`; added `EquivalencePolicy` + `DEFAULT_EQUIVALENCE_POLICY` in core; added RED->GREEN contract test; updated all dialect stubs to implement the expanded trait and return explicit stage-typed `Parse`/`Generate`/`Execute` errors for unimplemented paths.
+- Files changed: `crates/core/src/dialect.rs`, `crates/core/src/lib.rs`, `crates/core/tests/dialect_contract_test.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-mysql/src/lib.rs`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-mssql/src/lib.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test dialect_contract_test`: PASS (1 passed, 0 failed).
+  - `cargo check --workspace`: PASS (core + all dialect crates compile; workspace check green).
+- **Learnings:**
+  - Patterns discovered: Keep unimplemented dialect stub paths fail-fast by returning typed stage errors instead of placeholder success values, so later parser/generator work cannot silently pass.
+  - Gotchas encountered: Plan text mentions typed errors for `normalize`, but `normalize` has no `Result` in the contract; treated as no-op and used typed errors for `to_sql`/`connect`/stub parse+generate paths.
 ---
