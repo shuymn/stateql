@@ -1,3 +1,5 @@
+#![deny(rustdoc::broken_intra_doc_links)]
+
 mod adapter;
 mod annotation;
 mod config;
