@@ -8,7 +8,9 @@ mod statement;
 
 pub use adapter::DatabaseAdapter;
 pub use config::{ConnectionConfig, Version};
-pub use dialect::Dialect;
+pub use dialect::{
+    DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, Dialect, EquivalencePolicy,
+};
 pub use diff::DiffOp;
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,
