@@ -30,6 +30,27 @@ echo ""
 
 cd "$ROOT_DIR"
 
+# Run quality gates (fmt, clippy fix) and verify tests before committing.
+# Returns 0 if gates pass, 1 if tests fail (commit should be skipped).
+quality_gate() {
+  echo "  [ralph] Running quality gates..."
+
+  # Auto-fix formatting
+  cargo +nightly-2026-02-20 fmt --all 2>&1 || true
+
+  # Auto-fix clippy warnings (allow dirty working tree)
+  cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged -- -D warnings 2>&1 || true
+
+  # Verify tests pass
+  if ! cargo nextest run --workspace 2>&1; then
+    echo "  [ralph] WARNING: tests failed, skipping commit"
+    return 1
+  fi
+
+  echo "  [ralph] Quality gates passed"
+  return 0
+}
+
 # Auto-commit changes left by the agent (sandbox cannot write .git/)
 auto_commit() {
   local commit_msg_file="$SCRIPT_DIR/.commit-msg"
@@ -41,6 +62,11 @@ auto_commit() {
   fi
 
   echo "  [ralph] Uncommitted changes detected, auto-committing..."
+
+  # Run quality gates; skip commit if tests fail
+  if ! quality_gate; then
+    return 0
+  fi
 
   # Read commit message written by the agent
   local code_msg="feat(core): implement task (auto-commit)"
