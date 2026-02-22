@@ -1827,6 +1827,7 @@ dependencies = [
  "pg_query",
  "postgres",
  "stateql-core",
+ "stateql-testkit",
 ]
 
 [[package]]
