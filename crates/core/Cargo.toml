@@ -9,3 +9,6 @@ repository.workspace = true
 [lib]
 name = "stateql_core"
 path = "src/lib.rs"
+
+[dependencies]
+thiserror = "2"

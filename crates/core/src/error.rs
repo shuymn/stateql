@@ -1,6 +1,4 @@
-#![allow(dead_code)]
-
-use std::{error::Error as StdError, fmt};
+use std::error::Error as StdError;
 
 use crate::StatementContext;
 
@@ -12,65 +10,30 @@ pub struct SourceLocation {
     pub column: Option<usize>,
 }
 
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, thiserror::Error)]
 pub enum ParseError {
+    #[error(
+        "parse statement[{statement_index}] failed: {source_sql} (source_location={})",
+        format_location(.source_location.as_ref())
+    )]
     StatementConversion {
         statement_index: usize,
         source_sql: String,
         source_location: Option<SourceLocation>,
+        #[source]
         source: BoxedError,
     },
 }
 
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::StatementConversion {
-                statement_index,
-                source_sql,
-                source_location,
-                ..
-            } => {
-                write!(
-                    f,
-                    "parse statement[{statement_index}] failed: {source_sql} (source_location={})",
-                    format_location(source_location.as_ref())
-                )
-            }
-        }
-    }
-}
-
-impl StdError for ParseError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::StatementConversion { source, .. } => Some(source.as_ref()),
-        }
-    }
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, thiserror::Error)]
 pub enum DiffError {
+    #[error("diff target `{target}` failed: {operation}")]
     ObjectComparison { target: String, operation: String },
 }
 
-impl fmt::Display for DiffError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ObjectComparison { target, operation } => {
-                write!(f, "diff target `{target}` failed: {operation}")
-            }
-        }
-    }
-}
-
-impl StdError for DiffError {}
-
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, thiserror::Error)]
 pub enum GenerateError {
+    #[error("generate dialect `{dialect}` target `{target}` failed for op `{diff_op}`")]
     UnsupportedDiffOp {
         diff_op: String,
         target: String,
@@ -78,32 +41,20 @@ pub enum GenerateError {
     },
 }
 
-impl fmt::Display for GenerateError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnsupportedDiffOp {
-                diff_op,
-                target,
-                dialect,
-            } => write!(
-                f,
-                "generate dialect `{dialect}` target `{target}` failed for op `{diff_op}`"
-            ),
-        }
-    }
-}
-
-impl StdError for GenerateError {}
-
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
+    #[error(
+        "execute statement[{statement_index}] failed after {executed_statements} successes: {sql} (source_location={}, statement_context={})",
+        format_location(.source_location.as_ref()),
+        format_statement_context(.statement_context.as_deref())
+    )]
     StatementFailed {
         statement_index: usize,
         sql: String,
         executed_statements: usize,
         source_location: Option<SourceLocation>,
         statement_context: Option<Box<StatementContext>>,
+        #[source]
         source: BoxedError,
     },
 }
@@ -131,90 +82,18 @@ impl ExecutionError {
     }
 }
 
-impl fmt::Display for ExecutionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::StatementFailed {
-                statement_index,
-                sql,
-                executed_statements,
-                source_location,
-                statement_context,
-                ..
-            } => write!(
-                f,
-                "execute statement[{statement_index}] failed after {executed_statements} successes: {sql} (source_location={}, statement_context={})",
-                format_location(source_location.as_ref()),
-                format_statement_context(statement_context.as_deref())
-            ),
-        }
-    }
-}
-
-impl StdError for ExecutionError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::StatementFailed { source, .. } => Some(source.as_ref()),
-        }
-    }
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    Parse(ParseError),
-    Diff(DiffError),
-    Generate(GenerateError),
-    Execute(ExecutionError),
+    #[error("parse error: {0}")]
+    Parse(#[from] ParseError),
+    #[error("diff error: {0}")]
+    Diff(#[from] DiffError),
+    #[error("generate error: {0}")]
+    Generate(#[from] GenerateError),
+    #[error("execute error: {0}")]
+    Execute(#[from] ExecutionError),
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Parse(error) => write!(f, "parse error: {error}"),
-            Self::Diff(error) => write!(f, "diff error: {error}"),
-            Self::Generate(error) => write!(f, "generate error: {error}"),
-            Self::Execute(error) => write!(f, "execute error: {error}"),
-        }
-    }
-}
-
-impl StdError for Error {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::Parse(error) => Some(error),
-            Self::Diff(error) => Some(error),
-            Self::Generate(error) => Some(error),
-            Self::Execute(error) => Some(error),
-        }
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(value: ParseError) -> Self {
-        Self::Parse(value)
-    }
-}
-
-impl From<DiffError> for Error {
-    fn from(value: DiffError) -> Self {
-        Self::Diff(value)
-    }
-}
-
-impl From<GenerateError> for Error {
-    fn from(value: GenerateError) -> Self {
-        Self::Generate(value)
-    }
-}
-
-impl From<ExecutionError> for Error {
-    fn from(value: ExecutionError) -> Self {
-        Self::Execute(value)
-    }
-}
-
-#[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
 
 fn format_location(location: Option<&SourceLocation>) -> String {

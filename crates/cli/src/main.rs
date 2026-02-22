@@ -1,12 +1,12 @@
 use std::{
     collections::BTreeMap,
-    error::Error as StdError,
-    fmt, fs,
+    fs,
     io::{self, IsTerminal, Read},
     path::{Path, PathBuf},
 };
 
 use clap::{Args, Parser, Subcommand};
+use error_presentation::{CliError, CliResult, render_runtime_error};
 use stateql_core::{
     ConnectionConfig, Dialect, Mode, Orchestrator, OrchestratorOptions, OrchestratorOutput,
 };
@@ -18,6 +18,8 @@ use stateql_dialect_mysql::MysqlDialect;
 use stateql_dialect_postgres::PostgresDialect;
 #[cfg(feature = "sqlite")]
 use stateql_dialect_sqlite::SqliteDialect;
+
+mod error_presentation;
 
 const RUNTIME_ERROR_EXIT_CODE: i32 = 1;
 #[cfg(feature = "postgres")]
@@ -132,84 +134,6 @@ struct MssqlArgs {
     database: String,
 }
 
-type CliResult<T> = std::result::Result<T, CliError>;
-
-#[derive(Debug)]
-enum CliError {
-    MissingDesiredSchemaInput,
-    ReadFile {
-        path: PathBuf,
-        source: io::Error,
-    },
-    ReadStdin(io::Error),
-    Core(stateql_core::Error),
-    #[cfg(not(any(
-        feature = "mysql",
-        feature = "postgres",
-        feature = "sqlite",
-        feature = "mssql"
-    )))]
-    NoDialectsEnabled,
-}
-
-impl fmt::Display for CliError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MissingDesiredSchemaInput => {
-                write!(
-                    f,
-                    "missing desired schema SQL: pass --file <PATH> or pipe SQL via stdin"
-                )
-            }
-            Self::ReadFile { path, source } => {
-                write!(
-                    f,
-                    "failed to read desired schema file `{}`: {source}",
-                    path.display()
-                )
-            }
-            Self::ReadStdin(source) => {
-                write!(f, "failed to read desired schema from stdin: {source}")
-            }
-            Self::Core(source) => write!(f, "{source}"),
-            #[cfg(not(any(
-                feature = "mysql",
-                feature = "postgres",
-                feature = "sqlite",
-                feature = "mssql"
-            )))]
-            Self::NoDialectsEnabled => write!(
-                f,
-                "no dialect features are enabled for this build; enable at least one of mysql/postgres/sqlite/mssql"
-            ),
-        }
-    }
-}
-
-impl StdError for CliError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::ReadFile { source, .. } => Some(source),
-            Self::ReadStdin(source) => Some(source),
-            Self::Core(source) => Some(source),
-            Self::MissingDesiredSchemaInput => None,
-            #[cfg(not(any(
-                feature = "mysql",
-                feature = "postgres",
-                feature = "sqlite",
-                feature = "mssql"
-            )))]
-            Self::NoDialectsEnabled => None,
-        }
-    }
-}
-
-impl From<stateql_core::Error> for CliError {
-    fn from(value: stateql_core::Error) -> Self {
-        Self::Core(value)
-    }
-}
-
 fn main() {
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
@@ -221,7 +145,7 @@ fn main() {
     };
 
     if let Err(error) = run(cli) {
-        eprintln!("{error}");
+        eprintln!("{}", render_runtime_error(error));
         std::process::exit(RUNTIME_ERROR_EXIT_CODE);
     }
 }

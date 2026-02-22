@@ -18,7 +18,9 @@ sqlite = ["dep:stateql-dialect-sqlite"]
 mssql = ["dep:stateql-dialect-mssql"]
 
 [dependencies]
+anyhow = "1"
 clap = { version = "4.5", features = ["derive"] }
+miette = "7"
 stateql-core.workspace = true
 stateql-dialect-postgres = { workspace = true, optional = true }
 stateql-dialect-mysql = { workspace = true, optional = true }
