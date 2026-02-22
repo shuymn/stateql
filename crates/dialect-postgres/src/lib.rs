@@ -7,6 +7,7 @@ use stateql_core::{
 
 mod extra_keys;
 mod generator;
+mod normalize;
 mod parser;
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -39,7 +40,9 @@ impl Dialect for PostgresDialect {
         .into())
     }
 
-    fn normalize(&self, _obj: &mut SchemaObject) {}
+    fn normalize(&self, obj: &mut SchemaObject) {
+        normalize::normalize_object(obj);
+    }
 
     fn quote_ident(&self, ident: &Ident) -> String {
         format!("\"{}\"", ident.value)

@@ -1,13 +1,15 @@
 use std::{collections::BTreeMap, io};
 
-use pg_query::protobuf::{RawStmt, node::Node as NodeEnum};
+use pg_query::protobuf::{
+    ConstrType, PartitionStrategy as PgPartitionStrategy, RawStmt, a_const, node::Node as NodeEnum,
+};
 use stateql_core::{
     AnnotationAttachment, AnnotationExtractor, AnnotationTarget, Column, DataType, Expr, Ident,
-    ParseError, QualifiedName, Result, SchemaObject, SourceLocation, Table, Value,
-    attach_annotations,
+    Identity, Literal, ParseError, Partition, PartitionBound, PartitionElement, PartitionStrategy,
+    QualifiedName, Result, SchemaObject, SourceLocation, Table, Value, attach_annotations,
 };
 
-use crate::extra_keys;
+use crate::{extra_keys, normalize};
 
 type ConversionResult<T> = std::result::Result<T, io::Error>;
 
@@ -44,6 +46,7 @@ pub(crate) fn parse_schema(sql: &str) -> Result<Vec<SchemaObject>> {
     }
 
     attach_annotations(&mut objects, &annotations, &attachments)?;
+    normalize::normalize_schema(&mut objects);
     Ok(objects)
 }
 
@@ -219,6 +222,8 @@ fn convert_create_table(
         );
     }
 
+    apply_partition_metadata(create_stmt, &mut table)?;
+
     let attachment = AnnotationAttachment {
         line,
         target: AnnotationTarget::Table(table.name.clone()),
@@ -266,18 +271,286 @@ fn convert_column(column_def: &pg_query::protobuf::ColumnDef) -> ConversionResul
         );
     }
 
+    let identity = parse_identity(column_def)?;
+
     Ok(Column {
         name: Ident::unquoted(column_def.colname.as_str()),
         data_type,
         not_null: column_def.is_not_null,
         default,
-        identity: None,
+        identity,
         generated: None,
         comment: None,
         collation: None,
         renamed_from: None,
         extra,
     })
+}
+
+fn parse_identity(
+    column_def: &pg_query::protobuf::ColumnDef,
+) -> ConversionResult<Option<Identity>> {
+    for constraint_node in &column_def.constraints {
+        let Some(NodeEnum::Constraint(constraint)) = constraint_node.node.as_ref() else {
+            continue;
+        };
+        let Ok(constraint_type) = ConstrType::try_from(constraint.contype) else {
+            continue;
+        };
+        if constraint_type == ConstrType::ConstrIdentity {
+            return Ok(Some(identity_from_generated_when(
+                constraint.generated_when.as_str(),
+            )));
+        }
+    }
+
+    Ok(None)
+}
+
+fn identity_from_generated_when(generated_when: &str) -> Identity {
+    let normalized = generated_when.trim().to_ascii_lowercase();
+    let always = matches!(normalized.as_str(), "a" | "always");
+    Identity {
+        always,
+        start: None,
+        increment: None,
+        min_value: None,
+        max_value: None,
+        cache: None,
+        cycle: false,
+    }
+}
+
+fn apply_partition_metadata(
+    create_stmt: &pg_query::protobuf::CreateStmt,
+    table: &mut Table,
+) -> ConversionResult<()> {
+    if let Some(partition_spec) = &create_stmt.partspec {
+        table.partition = Some(parse_partition_spec(partition_spec)?);
+    }
+
+    let parent = partition_parent(create_stmt);
+    if let Some(parent) = parent {
+        table.options.extra.insert(
+            extra_keys::TABLE_PARTITION_PARENT_NAME.to_string(),
+            Value::String(parent.relname.clone()),
+        );
+        if !parent.schemaname.is_empty() {
+            table.options.extra.insert(
+                extra_keys::TABLE_PARTITION_PARENT_SCHEMA.to_string(),
+                Value::String(parent.schemaname.clone()),
+            );
+        }
+    }
+
+    if let Some(partition_bound) = &create_stmt.partbound {
+        let strategy = partition_strategy_from_bound(partition_bound)
+            .or_else(|| {
+                table
+                    .partition
+                    .as_ref()
+                    .map(|partition| partition.strategy.clone())
+            })
+            .unwrap_or(PartitionStrategy::Range);
+        let bound = parse_partition_bound(partition_bound)?;
+        table.partition = Some(Partition {
+            strategy,
+            columns: Vec::new(),
+            partitions: vec![PartitionElement {
+                name: table.name.name.clone(),
+                bound,
+                extra: BTreeMap::new(),
+            }],
+        });
+    }
+
+    Ok(())
+}
+
+fn parse_partition_spec(
+    partition_spec: &pg_query::protobuf::PartitionSpec,
+) -> ConversionResult<Partition> {
+    let strategy = parse_partition_strategy(partition_spec.strategy)?;
+    let mut columns = Vec::with_capacity(partition_spec.part_params.len());
+
+    for part_param in &partition_spec.part_params {
+        let Some(NodeEnum::PartitionElem(partition_elem)) = part_param.node.as_ref() else {
+            return Err(conversion_error(
+                "partition key is missing PartitionElem payload",
+            ));
+        };
+
+        if !partition_elem.name.is_empty() {
+            columns.push(Ident::unquoted(partition_elem.name.as_str()));
+            continue;
+        }
+
+        let Some(expr) = &partition_elem.expr else {
+            return Err(conversion_error(
+                "partition key element has no name or expression",
+            ));
+        };
+        columns.push(parse_partition_key_ident(expr.as_ref())?);
+    }
+
+    Ok(Partition {
+        strategy,
+        columns,
+        partitions: Vec::new(),
+    })
+}
+
+fn parse_partition_key_ident(node: &pg_query::protobuf::Node) -> ConversionResult<Ident> {
+    match node.node.as_ref() {
+        Some(NodeEnum::ColumnRef(column_ref)) => {
+            let mut fields = column_ref.fields.iter().filter_map(node_string);
+            let Some(first) = fields.next() else {
+                return Err(conversion_error(
+                    "partition key column reference has no identifier",
+                ));
+            };
+            if fields.next().is_some() {
+                return Err(conversion_error(
+                    "partition key expression is unsupported in v1 parser",
+                ));
+            }
+            Ok(Ident::unquoted(first))
+        }
+        Some(NodeEnum::String(value)) => Ok(Ident::unquoted(value.sval.as_str())),
+        _ => Err(conversion_error(
+            "partition key expression is unsupported in v1 parser",
+        )),
+    }
+}
+
+fn parse_partition_strategy(raw_strategy: i32) -> ConversionResult<PartitionStrategy> {
+    let strategy = PgPartitionStrategy::try_from(raw_strategy).map_err(|_| {
+        conversion_error(format!(
+            "unsupported partition strategy code: {raw_strategy}"
+        ))
+    })?;
+
+    match strategy {
+        PgPartitionStrategy::List => Ok(PartitionStrategy::List),
+        PgPartitionStrategy::Range => Ok(PartitionStrategy::Range),
+        PgPartitionStrategy::Hash => Ok(PartitionStrategy::Hash),
+        PgPartitionStrategy::Undefined => Err(conversion_error("partition strategy is undefined")),
+    }
+}
+
+fn partition_strategy_from_bound(
+    bound: &pg_query::protobuf::PartitionBoundSpec,
+) -> Option<PartitionStrategy> {
+    match bound.strategy.as_str() {
+        "l" | "L" => Some(PartitionStrategy::List),
+        "r" | "R" => Some(PartitionStrategy::Range),
+        "h" | "H" => Some(PartitionStrategy::Hash),
+        _ => None,
+    }
+}
+
+fn parse_partition_bound(
+    bound: &pg_query::protobuf::PartitionBoundSpec,
+) -> ConversionResult<Option<PartitionBound>> {
+    if bound.is_default {
+        return Ok(None);
+    }
+
+    if !bound.listdatums.is_empty() {
+        let values = parse_partition_expr_list(&bound.listdatums)?;
+        if values.len() == 1 && is_maxvalue_expr(&values[0]) {
+            return Ok(Some(PartitionBound::MaxValue));
+        }
+        return Ok(Some(PartitionBound::In(values)));
+    }
+
+    if !bound.lowerdatums.is_empty() || !bound.upperdatums.is_empty() {
+        let from = parse_partition_expr_list(&bound.lowerdatums)?;
+        let to = parse_partition_expr_list(&bound.upperdatums)?;
+        if from.is_empty() {
+            if to.len() == 1 && is_maxvalue_expr(&to[0]) {
+                return Ok(Some(PartitionBound::MaxValue));
+            }
+            return Ok(Some(PartitionBound::LessThan(to)));
+        }
+        return Ok(Some(PartitionBound::FromTo { from, to }));
+    }
+
+    Ok(None)
+}
+
+fn parse_partition_expr_list(nodes: &[pg_query::protobuf::Node]) -> ConversionResult<Vec<Expr>> {
+    nodes.iter().map(parse_partition_expr).collect()
+}
+
+fn parse_partition_expr(node: &pg_query::protobuf::Node) -> ConversionResult<Expr> {
+    match node.node.as_ref() {
+        Some(NodeEnum::AConst(constant)) => parse_partition_a_const(constant),
+        Some(NodeEnum::ColumnRef(column_ref)) => {
+            let token = column_ref
+                .fields
+                .iter()
+                .find_map(node_string)
+                .ok_or_else(|| {
+                    conversion_error("partition bound column reference has no identifier")
+                })?;
+            if token.eq_ignore_ascii_case("maxvalue") {
+                Ok(Expr::Raw("MAXVALUE".to_string()))
+            } else if token.eq_ignore_ascii_case("minvalue") {
+                Ok(Expr::Raw("MINVALUE".to_string()))
+            } else {
+                Ok(Expr::Ident(Ident::unquoted(token)))
+            }
+        }
+        Some(NodeEnum::String(value)) => Ok(Expr::Literal(Literal::String(value.sval.clone()))),
+        _ => Err(conversion_error("unsupported partition bound expression")),
+    }
+}
+
+fn parse_partition_a_const(constant: &pg_query::protobuf::AConst) -> ConversionResult<Expr> {
+    if constant.isnull {
+        return Ok(Expr::Null);
+    }
+
+    match constant.val.as_ref() {
+        Some(a_const::Val::Ival(value)) => {
+            Ok(Expr::Literal(Literal::Integer(i64::from(value.ival))))
+        }
+        Some(a_const::Val::Fval(value)) => {
+            let parsed = value.fval.parse::<f64>().map_err(|source| {
+                conversion_error(format!(
+                    "invalid float in partition bound expression: {source}"
+                ))
+            })?;
+            Ok(Expr::Literal(Literal::Float(parsed)))
+        }
+        Some(a_const::Val::Boolval(value)) => Ok(Expr::Literal(Literal::Boolean(value.boolval))),
+        Some(a_const::Val::Sval(value)) => Ok(Expr::Literal(Literal::String(value.sval.clone()))),
+        Some(a_const::Val::Bsval(value)) => Ok(Expr::Raw(format!("B'{}'", value.bsval))),
+        None => Err(conversion_error(
+            "partition bound constant has no literal payload",
+        )),
+    }
+}
+
+fn is_maxvalue_expr(expr: &Expr) -> bool {
+    matches!(expr, Expr::Raw(raw) if raw.eq_ignore_ascii_case("MAXVALUE"))
+}
+
+fn partition_parent(
+    create_stmt: &pg_query::protobuf::CreateStmt,
+) -> Option<&pg_query::protobuf::RangeVar> {
+    create_stmt
+        .inh_relations
+        .iter()
+        .filter_map(|node| node.node.as_ref())
+        .find_map(|node| {
+            if let NodeEnum::RangeVar(range_var) = node {
+                Some(range_var)
+            } else {
+                None
+            }
+        })
 }
 
 fn convert_data_type(type_name: &pg_query::protobuf::TypeName) -> ConversionResult<DataType> {
