@@ -1,8 +1,10 @@
 use stateql_core::{
-    ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, Ident, Result, SchemaObject, Statement,
+    ConnectionConfig, DatabaseAdapter, Dialect, DiffOp, EquivalencePolicy, Ident, Result,
+    SchemaObject, Statement,
 };
 
 mod adapter;
+mod equivalence;
 mod export_queries;
 mod extra_keys;
 mod generator;
@@ -42,6 +44,10 @@ impl Dialect for PostgresDialect {
 
     fn normalize(&self, obj: &mut SchemaObject) {
         normalize::normalize_object(obj);
+    }
+
+    fn equivalence_policy(&self) -> &'static dyn EquivalencePolicy {
+        &equivalence::POSTGRES_EQUIVALENCE_POLICY
     }
 
     fn quote_ident(&self, ident: &Ident) -> String {
