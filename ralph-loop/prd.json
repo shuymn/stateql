@@ -1,0 +1,454 @@
+{
+  "project": "stateql-v1",
+  "plan": "docs/plans/2026-02-21-stateql-v1-plan.md",
+  "stories": [
+    {
+      "id": "task-0",
+      "title": "Remove Bootstrap Placeholders",
+      "phase": "A",
+      "deps": [],
+      "passes": false
+    },
+    {
+      "id": "task-1",
+      "title": "Add Stage-Typed Error Enums",
+      "phase": "A",
+      "deps": ["task-0"],
+      "passes": false
+    },
+    {
+      "id": "task-2",
+      "title": "Add Top-Level Error and Result<T>",
+      "phase": "A",
+      "deps": ["task-1"],
+      "passes": false
+    },
+    {
+      "id": "task-3",
+      "title": "Add Version and ConnectionConfig",
+      "phase": "A",
+      "deps": ["task-2"],
+      "passes": false
+    },
+    {
+      "id": "task-4",
+      "title": "Expand Dialect Trait to Full Contract",
+      "phase": "A",
+      "deps": ["task-0", "task-1", "task-2", "task-3"],
+      "passes": false
+    },
+    {
+      "id": "task-5",
+      "title": "Implement Single-Connection Adapter + RAII Transaction",
+      "phase": "A",
+      "deps": ["task-4", "task-3"],
+      "passes": false
+    },
+    {
+      "id": "task-6",
+      "title": "Add IR Foundations (Ident, QualifiedName, Value, DataType)",
+      "phase": "B",
+      "deps": ["task-4"],
+      "passes": false
+    },
+    {
+      "id": "task-7",
+      "title": "Add Expression AST Core Variants",
+      "phase": "B",
+      "deps": ["task-6"],
+      "passes": false
+    },
+    {
+      "id": "task-8",
+      "title": "Add Full SchemaObject Family (Part 1)",
+      "phase": "B",
+      "deps": ["task-7"],
+      "passes": false
+    },
+    {
+      "id": "task-9",
+      "title": "Add Full SchemaObject Family (Part 2)",
+      "phase": "B",
+      "deps": ["task-8"],
+      "passes": false
+    },
+    {
+      "id": "task-10",
+      "title": "Add Statement Context Model",
+      "phase": "B",
+      "deps": ["task-6"],
+      "passes": false
+    },
+    {
+      "id": "task-11",
+      "title": "Add Annotation Extractor (@renamed)",
+      "phase": "B",
+      "deps": ["task-6"],
+      "passes": false
+    },
+    {
+      "id": "task-12",
+      "title": "Add Annotation Attachment Validation",
+      "phase": "B",
+      "deps": ["task-11", "task-9"],
+      "passes": false
+    },
+    {
+      "id": "task-13",
+      "title": "Add Full DiffOp and Change Enums",
+      "phase": "C",
+      "deps": ["task-9"],
+      "passes": false
+    },
+    {
+      "id": "task-13b",
+      "title": "Add IR Validation Tests for Dialect-Specific Patterns",
+      "phase": "C",
+      "deps": ["task-13", "task-9"],
+      "passes": false
+    },
+    {
+      "id": "task-14",
+      "title": "Add EquivalencePolicy and DiffConfig",
+      "phase": "C",
+      "deps": ["task-13", "task-4"],
+      "passes": false
+    },
+    {
+      "id": "task-15",
+      "title": "Implement Core Object Comparison (Table/Column/Index Baseline)",
+      "phase": "C",
+      "deps": ["task-13", "task-14", "task-9"],
+      "passes": false
+    },
+    {
+      "id": "task-15b",
+      "title": "Implement Remaining SchemaObject Comparison",
+      "phase": "C",
+      "deps": ["task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-15c",
+      "title": "Implement Partition Diff Comparison",
+      "phase": "C",
+      "deps": ["task-15", "task-15b", "task-8"],
+      "passes": false
+    },
+    {
+      "id": "task-16",
+      "title": "Implement Rename Detection from renamed_from",
+      "phase": "C",
+      "deps": ["task-12", "task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-17",
+      "title": "Implement Name Matching with schema_search_path",
+      "phase": "C",
+      "deps": ["task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-18",
+      "title": "Implement enable_drop Suppression Diagnostics",
+      "phase": "C",
+      "deps": ["task-15", "task-14"],
+      "passes": false
+    },
+    {
+      "id": "task-19",
+      "title": "Implement Constraint Modification Pairing",
+      "phase": "C",
+      "deps": ["task-18", "task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-20",
+      "title": "Implement Privilege Set-Difference Semantics",
+      "phase": "C",
+      "deps": ["task-15", "task-9"],
+      "passes": false
+    },
+    {
+      "id": "task-21",
+      "title": "Implement View Rebuild Closure Expansion",
+      "phase": "C",
+      "deps": ["task-15", "task-15b"],
+      "passes": false
+    },
+    {
+      "id": "task-22",
+      "title": "Implement Diff Ordering Priorities",
+      "phase": "C",
+      "deps": ["task-15", "task-15b", "task-15c", "task-17", "task-20", "task-21"],
+      "passes": false
+    },
+    {
+      "id": "task-22b",
+      "title": "Implement Dedicated DDL Planner Module (plan.rs)",
+      "phase": "C",
+      "deps": ["task-22"],
+      "passes": false
+    },
+    {
+      "id": "task-23",
+      "title": "Implement Circular FK Fallback",
+      "phase": "C",
+      "deps": ["task-22", "task-22b", "task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-24",
+      "title": "Implement Executor Transaction Grouping",
+      "phase": "D",
+      "deps": ["task-5", "task-10", "task-22b"],
+      "passes": false
+    },
+    {
+      "id": "task-25",
+      "title": "Implement Non-Transactional Boundary Handling",
+      "phase": "D",
+      "deps": ["task-24"],
+      "passes": false
+    },
+    {
+      "id": "task-26",
+      "title": "Implement BatchBoundary No-Commit Semantics",
+      "phase": "D",
+      "deps": ["task-24"],
+      "passes": false
+    },
+    {
+      "id": "task-27",
+      "title": "Propagate Execution Context into ExecutionError",
+      "phase": "D",
+      "deps": ["task-24", "task-10", "task-2"],
+      "passes": false
+    },
+    {
+      "id": "task-28",
+      "title": "Implement Renderer with Dialect Separator",
+      "phase": "D",
+      "deps": ["task-10", "task-4"],
+      "passes": false
+    },
+    {
+      "id": "task-29",
+      "title": "Implement Orchestrator --dry-run and --apply",
+      "phase": "D",
+      "deps": ["task-4", "task-17", "task-18", "task-22b", "task-24", "task-28"],
+      "passes": false
+    },
+    {
+      "id": "task-30",
+      "title": "Implement Orchestrator --export",
+      "phase": "D",
+      "deps": ["task-29"],
+      "passes": false
+    },
+    {
+      "id": "task-30b",
+      "title": "Verify --export Round-Trip Idempotency",
+      "phase": "D",
+      "deps": ["task-30"],
+      "passes": false
+    },
+    {
+      "id": "task-31",
+      "title": "PostgreSQL Parse Pipeline with pg_query",
+      "phase": "E",
+      "deps": ["task-11", "task-12", "task-9", "task-4", "task-13b"],
+      "passes": false
+    },
+    {
+      "id": "task-32",
+      "title": "PostgreSQL Full DDL Generator + Unsupported-Op Contract",
+      "phase": "E",
+      "deps": ["task-31", "task-13"],
+      "passes": false
+    },
+    {
+      "id": "task-33a",
+      "title": "PostgreSQL Normalizer",
+      "phase": "E",
+      "deps": ["task-31", "task-5"],
+      "passes": false
+    },
+    {
+      "id": "task-33b",
+      "title": "PostgreSQL to_sql + Adapter + Export Queries",
+      "phase": "E",
+      "deps": ["task-33a", "task-32"],
+      "passes": false
+    },
+    {
+      "id": "task-33c",
+      "title": "PostgreSQL EquivalencePolicy Implementation",
+      "phase": "E",
+      "deps": ["task-33a", "task-14", "task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-34",
+      "title": "Add MySQL/SQLite/MSSQL Parse Pipelines (sqlparser-rs)",
+      "phase": "E",
+      "deps": ["task-11", "task-12", "task-9", "task-4", "task-13b"],
+      "passes": false
+    },
+    {
+      "id": "task-34b",
+      "title": "SQLite Full Normalize / to_sql / Adapter",
+      "phase": "E",
+      "deps": ["task-34", "task-5", "task-14", "task-17"],
+      "passes": false
+    },
+    {
+      "id": "task-34c",
+      "title": "MySQL Full Normalize / to_sql / Adapter",
+      "phase": "E",
+      "deps": ["task-34", "task-5", "task-14", "task-17"],
+      "passes": false
+    },
+    {
+      "id": "task-34d",
+      "title": "MSSQL Full Normalize / to_sql / Adapter",
+      "phase": "E",
+      "deps": ["task-34", "task-5", "task-14", "task-17"],
+      "passes": false
+    },
+    {
+      "id": "task-34e",
+      "title": "Add MySQL/SQLite/MSSQL Equivalence Policy Coverage",
+      "phase": "E",
+      "deps": ["task-34b", "task-34c", "task-34d", "task-14", "task-15"],
+      "passes": false
+    },
+    {
+      "id": "task-35",
+      "title": "SQLite Full Generator (Rebuild + Unsupported-Op Contract)",
+      "phase": "E",
+      "deps": ["task-34", "task-34b", "task-10"],
+      "passes": false
+    },
+    {
+      "id": "task-36",
+      "title": "MySQL Full Generator (CHANGE COLUMN / AUTO_INCREMENT / AFTER / Partitioning)",
+      "phase": "E",
+      "deps": ["task-34", "task-34c", "task-13"],
+      "passes": false
+    },
+    {
+      "id": "task-37",
+      "title": "MSSQL Full Generator (BatchBoundary / sp_rename / IDENTITY)",
+      "phase": "E",
+      "deps": ["task-34", "task-34d", "task-10", "task-28"],
+      "passes": false
+    },
+    {
+      "id": "task-38",
+      "title": "Add YAML TestCase Schema with Defaults",
+      "phase": "F",
+      "deps": ["task-2"],
+      "passes": false
+    },
+    {
+      "id": "task-38b",
+      "title": "Implement YAML flavor Matching Semantics",
+      "phase": "F",
+      "deps": ["task-38"],
+      "passes": false
+    },
+    {
+      "id": "task-39",
+      "title": "Add Offline Runner",
+      "phase": "F",
+      "deps": ["task-38", "task-38b", "task-22"],
+      "passes": false
+    },
+    {
+      "id": "task-40",
+      "title": "Add Online Runner",
+      "phase": "F",
+      "deps": ["task-39", "task-5", "task-31", "task-33a", "task-33b", "task-33c", "task-34c", "task-34d"],
+      "passes": false
+    },
+    {
+      "id": "task-41",
+      "title": "Add Safety Regressions S1-S5",
+      "phase": "F",
+      "deps": ["task-12", "task-15", "task-25", "task-26", "task-31", "task-32"],
+      "passes": false
+    },
+    {
+      "id": "task-42",
+      "title": "Add Safety Regressions S6-S11",
+      "phase": "F",
+      "deps": ["task-5", "task-18", "task-19", "task-21", "task-23", "task-35"],
+      "passes": false
+    },
+    {
+      "id": "task-43",
+      "title": "Port PostgreSQL YAML Seed Cases",
+      "phase": "F",
+      "deps": ["task-31", "task-39"],
+      "passes": false
+    },
+    {
+      "id": "task-43b",
+      "title": "Port YAML Idempotency Cases for All Dialects",
+      "phase": "F",
+      "deps": ["task-43", "task-34", "task-34e", "task-39"],
+      "passes": false
+    },
+    {
+      "id": "task-43c",
+      "title": "Port YAML Assertion Cases by Feature Group",
+      "phase": "F",
+      "deps": ["task-43b"],
+      "passes": false
+    },
+    {
+      "id": "task-43d",
+      "title": "Rewrite legacy_ignore_quotes Dependent Cases",
+      "phase": "F",
+      "deps": ["task-43c"],
+      "passes": false
+    },
+    {
+      "id": "task-43e",
+      "title": "Add Cargo Feature Gates for Dialect Inclusion",
+      "phase": "F",
+      "deps": ["task-4"],
+      "passes": false
+    },
+    {
+      "id": "task-44",
+      "title": "Implement CLI Single-Binary Subcommands",
+      "phase": "F",
+      "deps": ["task-29", "task-30", "task-30b", "task-31", "task-34", "task-43e"],
+      "passes": false
+    },
+    {
+      "id": "task-45",
+      "title": "Stabilize Dialect Contract Documentation",
+      "phase": "F",
+      "deps": ["task-4", "task-33a", "task-33b", "task-33c", "task-34b", "task-34c", "task-34d", "task-34e"],
+      "passes": false
+    },
+    {
+      "id": "task-45b",
+      "title": "Enforce Error Layering Boundaries",
+      "phase": "F",
+      "deps": ["task-1", "task-2", "task-44"],
+      "passes": false
+    },
+    {
+      "id": "task-45c",
+      "title": "Prepare core and testkit for Publish",
+      "phase": "F",
+      "deps": ["task-45", "task-45b"],
+      "passes": false
+    }
+  ]
+}
