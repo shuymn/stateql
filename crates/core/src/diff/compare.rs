@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::compare_remaining::{compare_remaining_objects, validate_sequence_invariant};
+use super::{
+    compare_remaining::{compare_remaining_objects, validate_sequence_invariant},
+    partition::diff_partition,
+};
 use crate::{
     CheckConstraint, Column, ColumnChange, DataType, DiffConfig, DiffError, DiffOp, Ident,
     IndexDef, IndexOwner, QualifiedName, Result, SchemaObject, Table, custom_types_equivalent,
@@ -97,6 +100,13 @@ impl DiffEngine {
             ops,
         );
         self.compare_checks(&desired.name, &desired.checks, &current.checks, config, ops);
+        diff_partition(
+            &desired.name,
+            desired.partition.as_ref(),
+            current.partition.as_ref(),
+            config,
+            ops,
+        );
     }
 
     fn compare_columns(
