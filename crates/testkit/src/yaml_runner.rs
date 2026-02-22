@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Deserialize;
-use stateql_core::{ParseError, Result, SourceLocation};
+use stateql_core::{DatabaseAdapter, Dialect, ParseError, Result, SourceLocation};
 
 const TESTCASE_SOURCE_LABEL: &str = "yaml testcase";
 
@@ -21,8 +21,88 @@ pub struct TestCase {
     pub offline: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TestResult {
+    Passed,
+    Skipped(String),
+    Failed(String),
+}
+
 pub fn load_test_cases_from_str(yaml: &str) -> Result<BTreeMap<String, TestCase>> {
     serde_yaml::from_str(yaml).map_err(|source| parse_yaml_error(yaml, source))
+}
+
+pub fn matches_flavor(requirement: Option<&str>, current_flavor: &str) -> bool {
+    let Some(requirement) = requirement.map(str::trim).filter(|value| !value.is_empty()) else {
+        return true;
+    };
+
+    if let Some(excluded_flavor) = requirement.strip_prefix('!') {
+        return excluded_flavor != current_flavor;
+    }
+
+    requirement == current_flavor
+}
+
+pub fn run_offline_test(dialect: &dyn Dialect, test: &TestCase) -> TestResult {
+    run_with_flavor_expectation(test, dialect.name(), || {
+        run_offline_test_impl(dialect, test)
+    })
+}
+
+pub fn run_online_test(
+    dialect: &dyn Dialect,
+    adapter: &mut dyn DatabaseAdapter,
+    test: &TestCase,
+) -> TestResult {
+    run_with_flavor_expectation(test, dialect.name(), || {
+        run_online_test_impl(dialect, adapter, test)
+    })
+}
+
+fn run_with_flavor_expectation(
+    test: &TestCase,
+    current_flavor: &str,
+    execute: impl FnOnce() -> Result<()>,
+) -> TestResult {
+    let flavor_requirement = test.flavor.as_deref();
+    let expect_failure = !matches_flavor(flavor_requirement, current_flavor);
+    let execution_result = execute();
+
+    if expect_failure {
+        return match execution_result {
+            Err(_) => TestResult::Skipped(format!(
+                "Correctly fails on non-matching flavor (requires '{}', running on '{}')",
+                flavor_requirement.unwrap_or_default(),
+                current_flavor
+            )),
+            Ok(()) => TestResult::Failed(format!(
+                "Test passed but flavor '{}' does not match current flavor '{}'",
+                flavor_requirement.unwrap_or_default(),
+                current_flavor
+            )),
+        };
+    }
+
+    match execution_result {
+        Ok(()) => TestResult::Passed,
+        Err(error) => TestResult::Failed(error.to_string()),
+    }
+}
+
+fn run_offline_test_impl(dialect: &dyn Dialect, test: &TestCase) -> Result<()> {
+    let _ = dialect.parse(&test.current)?;
+    let _ = dialect.parse(&test.desired)?;
+    Ok(())
+}
+
+fn run_online_test_impl(
+    dialect: &dyn Dialect,
+    adapter: &mut dyn DatabaseAdapter,
+    test: &TestCase,
+) -> Result<()> {
+    let _ = adapter.server_version()?;
+    run_offline_test_impl(dialect, test)
 }
 
 fn parse_yaml_error(yaml: &str, source: serde_yaml::Error) -> stateql_core::Error {
