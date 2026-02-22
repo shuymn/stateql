@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For MSSQL generator semantics, keep SQL emission in a single op dispatcher that injects `Statement::BatchBoundary` between emitted SQL statements and route `sp_rename` rendering through dedicated table/column/index helpers so batch synchronization and rename targets stay deterministic.
 - For MySQL generator semantics, process contiguous table-scoped ops as a batch, merge repeated AlterColumn changes into one CHANGE COLUMN per column, emit PK ops before AUTO_INCREMENT CHANGE COLUMN rewrites, and optimize DropView+CreateView into CREATE OR REPLACE VIEW only when the target view name matches.
 - For SQLite generator rebuild semantics, batch table-structure diff ops per table and emit a six-step transactional `StatementContext::SqliteTableRebuild` sequence (`CreateShadowTable` -> `CopyData` -> `DropOldTable` -> `RenameShadowTable` -> `RecreateIndexes` -> `RecreateTriggers`) so failures surface precise rebuild-step diagnostics and rollback stays atomic.
 - For non-PostgreSQL residual expression equivalence, wire explicit custom `equivalence_policy()` implementations that canonicalize only `Expr::Raw` integer-cast literals + redundant outer parentheses + whitespace collapse, keep `is_equivalent_custom_type` strict, and enforce symmetry/stability with `verify_equivalence_policy_contract`.
@@ -733,4 +734,20 @@
 - **Learnings:**
   - Patterns discovered: MySQL generator correctness is more stable when unsupported-shape errors from renderer helpers are remapped to variant-tagged `UnsupportedDiffOp` errors at the generator boundary, so exhaustive support-contract tests stay aligned with `DiffOp` classification.
   - Gotchas encountered: `to_sql` helper failures can leak internal diff-op names (`CreateTableUnsupportedShape`) unless explicitly normalized in generator error mapping.
+---
+## 2026-02-22 - task-37: MSSQL Full Generator (`BatchBoundary` / `sp_rename` / `IDENTITY`)
+- What was implemented: Added a production MSSQL `generate_ddl` pipeline in `generator.rs` with explicit op dispatch, variant-tagged unsupported-op errors, deterministic `Statement::BatchBoundary` injection between emitted SQL statements, and `sp_rename` builders for table/column/index renames; wired `MssqlDialect::generate_ddl()` to the new generator; and added RED->GREEN coverage for create+rename batch behavior, identity/clustered/NFR rendering, and exhaustive `DiffOp` support-contract classification.
+- Files changed: `crates/dialect-mssql/src/generator.rs`, `crates/dialect-mssql/src/lib.rs`, `crates/dialect-mssql/tests/mssql_generator_test.rs`, `crates/dialect-mssql/tests/identity_and_clustered_test.rs`, `crates/dialect-mssql/tests/generator_contract_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test mssql_generator_test`: PASS (1 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test identity_and_clustered_test`: PASS (1 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test generator_contract_test`: PASS (2 passed, 0 failed).
+  - `generator_contract_test` exhaustively classifies all `DiffOp` variants via `all_diffop_variants()` and validates supported-vs-unsupported behavior: PASS.
+  - Quality gates:
+    - `CARGO_HOME=/tmp/cargo cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo nextest run --workspace`: PASS (164 passed, 0 failed, 3 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep MSSQL rename SQL generation in dedicated helpers that build `sp_rename` targets from `QualifiedName`/`Ident` instead of ad-hoc string formatting in each match arm.
+  - Gotchas encountered: Parallel `cargo` invocations in this sandbox can pause on build/cache locks (`Blocking waiting for file lock on build directory`), so verification runs should be serialized to reduce transient wait noise.
 ---
