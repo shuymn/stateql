@@ -1,17 +1,7 @@
-use crate::{ConnectionConfig, DatabaseAdapter, DiffOp, Ident, Result, SchemaObject, Statement};
-
-pub trait EquivalencePolicy: Send + Sync {
-    fn is_equivalent_custom_type(&self, left: &str, right: &str) -> bool {
-        left == right
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DefaultEquivalencePolicy;
-
-impl EquivalencePolicy for DefaultEquivalencePolicy {}
-
-pub static DEFAULT_EQUIVALENCE_POLICY: DefaultEquivalencePolicy = DefaultEquivalencePolicy;
+use crate::{
+    ConnectionConfig, DatabaseAdapter, DiffOp, Ident, Result, SchemaObject, Statement,
+    diff::{DEFAULT_EQUIVALENCE_POLICY, EquivalencePolicy},
+};
 
 pub trait Dialect: Send + Sync {
     fn name(&self) -> &str;
