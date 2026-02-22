@@ -5,18 +5,22 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "YAML-driven test runner and migration checks for stateql dialects."
+readme = "../../README.md"
+keywords = ["stateql", "schema", "migration", "testing", "database"]
+categories = ["database", "development-tools::testing"]
 
 [lib]
 name = "stateql_testkit"
 path = "src/lib.rs"
 
 [dependencies]
-stateql-core = { path = "../core" }
+stateql-core = { path = "../core", version = "0.1.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_yaml = "0.9.34"
 
 [dev-dependencies]
-stateql-dialect-postgres = { path = "../dialect-postgres" }
-stateql-dialect-mysql = { path = "../dialect-mysql" }
-stateql-dialect-mssql = { path = "../dialect-mssql" }
-stateql-dialect-sqlite = { path = "../dialect-sqlite" }
+stateql-dialect-postgres = { path = "../dialect-postgres", version = "0.1.0" }
+stateql-dialect-mysql = { path = "../dialect-mysql", version = "0.1.0" }
+stateql-dialect-mssql = { path = "../dialect-mssql", version = "0.1.0" }
+stateql-dialect-sqlite = { path = "../dialect-sqlite", version = "0.1.0" }

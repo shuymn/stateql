@@ -5,6 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Core schema IR, diff, and execution contracts for stateql."
+readme = "../../README.md"
+keywords = ["stateql", "schema", "migration", "ddl", "database"]
+categories = ["database"]
 
 [lib]
 name = "stateql_core"
