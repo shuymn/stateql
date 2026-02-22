@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For non-PostgreSQL residual expression equivalence, wire explicit custom `equivalence_policy()` implementations that canonicalize only `Expr::Raw` integer-cast literals + redundant outer parentheses + whitespace collapse, keep `is_equivalent_custom_type` strict, and enforce symmetry/stability with `verify_equivalence_policy_contract`.
 - For MSSQL export/to_sql stability while parser conversion remains table-first, persist original `CREATE TABLE` SQL in `table.options.extra` (`mssql.source_sql`) and let `to_sql` fall back to that hint, while keeping adapter APIs synchronous with fail-fast SQL Server `2019+` version gating.
 - For MySQL export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` SQL in `table.options.extra` (`mysql.source_sql`) and let `to_sql` fall back to that hint, while keeping export catalog SQL centralized in `export_queries.rs` and adapter version gating fail-fast (`8.0+`).
 - For SQLite export/to_sql stability while parser coverage is still table-first, persist the original `CREATE TABLE` statement in `table.options.extra` (`sqlite.source_sql`) during parse and let `to_sql` fall back to that hint when structured table fields are absent, while still returning explicit `GenerateError` for unsupported `SchemaObject` variants.
@@ -681,4 +682,20 @@
 - **Learnings:**
   - Patterns discovered: Keep MSSQL adapter internals async-capable (`tiberius`) but enforce the public adapter contract as synchronous by blocking within a private runtime and returning only core `Result`/typed errors.
   - Gotchas encountered: `clippy::large_enum_variant` triggered for mixed live/override adapter backends; boxing the live backend state preserves ergonomics while satisfying workspace `-D warnings`.
+---
+## 2026-02-22 - task-34e: Add MySQL/SQLite/MSSQL Equivalence Policy Coverage
+- What was implemented: Added explicit custom equivalence policies for MySQL/SQLite/MSSQL and wired each dialect `equivalence_policy()` to absorb residual `Expr::Raw` false diffs (integer cast alias, redundant outer parentheses, whitespace-only differences) while keeping structural mismatches strict; added RED->GREEN dialect coverage tests and documented per-dialect policy boundaries in the new matrix document.
+- Files changed: `crates/dialect-mysql/src/lib.rs`, `crates/dialect-mysql/src/equivalence.rs`, `crates/dialect-mysql/tests/equivalence_policy_test.rs`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-sqlite/src/equivalence.rs`, `crates/dialect-sqlite/tests/equivalence_policy_test.rs`, `crates/dialect-mssql/src/lib.rs`, `crates/dialect-mssql/src/equivalence.rs`, `crates/dialect-mssql/tests/equivalence_policy_test.rs`, `docs/2026-02-21-equivalence-policy-matrix.md`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mysql --test equivalence_policy_test`: PASS (3 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-sqlite --test equivalence_policy_test`: PASS (3 passed, 0 failed).
+  - `CARGO_HOME=/tmp/cargo cargo nextest run -p stateql-dialect-mssql --test equivalence_policy_test`: PASS (3 passed, 0 failed).
+  - `docs/2026-02-21-equivalence-policy-matrix.md` added with explicit MySQL/SQLite/MSSQL policy differences and scope boundaries: PASS.
+  - Quality gates:
+    - `CARGO_HOME=/tmp/cargo cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `CARGO_HOME=/tmp/cargo cargo nextest run --workspace`: PASS (148 passed, 0 failed, 3 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep non-PostgreSQL equivalence policies narrowly scoped to residual raw-expression canonicalization and preserve strict behavior for structural expression mismatches.
+  - Gotchas encountered: In this sandbox, cargo operations are more reliable with `CARGO_HOME=/tmp/cargo` to avoid cache permission issues.
 ---
