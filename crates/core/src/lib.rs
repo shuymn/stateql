@@ -27,4 +27,4 @@ pub use ir::{
     TypeDef, TypeKind, UnaryOperator, Value, View, ViewSecurity, Volatility, WindowSpec,
     float_total_cmp, value_total_eq,
 };
-pub use statement::Statement;
+pub use statement::{SqliteRebuildStep, Statement, StatementContext};

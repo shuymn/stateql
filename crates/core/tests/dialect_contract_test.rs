@@ -48,6 +48,7 @@ impl Dialect for ContractDialect {
         Ok(vec![Statement::Sql {
             sql: "CREATE TABLE users(id int);".to_string(),
             transactional: true,
+            context: None,
         }])
     }
 
