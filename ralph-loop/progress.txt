@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- When extending shared enum payloads (for example `Statement::Sql`), update the core enum, root re-exports, and all contract-test constructors in one task so workspace-wide quality gates catch no stale struct literals.
 - For multi-phase IR growth, add new object-family structs/enums in one module pass and update both `ir.rs` and `lib.rs` re-exports in the same change so downstream crate imports never drift during task boundaries.
 - For staged IR expansion, move growing object families into `src/ir/<domain>.rs` and switch enum variants to typed payload structs in one change, then immediately update cross-crate fixture constructors to keep workspace-wide tests green.
 - For recursive IR expression trees, keep payload recursion explicit with `Box<Expr>` and isolate shared query/window payloads (`SubQuery`, `WindowSpec`) in a dedicated `ir/expr.rs` module, then re-export through `ir.rs` and `lib.rs` to stabilize downstream imports.
@@ -136,4 +137,18 @@
 - **Learnings:**
   - Patterns discovered: When adding large IR type families, constructor-focused integration tests (`schema_object_part*_test`) catch re-export and struct-shape regressions earlier than downstream crate checks.
   - Gotchas encountered: Workspace-wide clippy flags even test-only style nits (`redundant_pattern_matching`), so the quality-gate run should happen before updating tracking artifacts.
+---
+
+## 2026-02-22 - task-10: Add Statement Context Model
+- What was implemented: Added statement execution context modeling to core statements by extending `Statement::Sql` with `context: Option<StatementContext>`, introducing `StatementContext::SqliteTableRebuild { table, step }` and `SqliteRebuildStep` variants, re-exporting both new types from `stateql_core`, and adding a RED->GREEN integration test that validates SQLite rebuild context retention on generated statements.
+- Files changed: `crates/core/src/statement.rs`, `crates/core/src/lib.rs`, `crates/core/tests/statement_context_test.rs`, `crates/core/tests/dialect_contract_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test statement_context_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (22 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Statement-level diagnostic metadata should be modeled as typed enums on `Statement::Sql` and propagated via `Option` so execution semantics remain unchanged while diagnostics gain structure.
+  - Gotchas encountered: Adding a field to shared enum variants requires immediate updates to existing contract fixtures (`Statement::Sql` constructors) or workspace-wide compilation will fail before task tests run.
 ---
