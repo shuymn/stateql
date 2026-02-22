@@ -1,4 +1,5 @@
 mod adapter;
+mod config;
 mod dialect;
 mod diff;
 mod error;
@@ -6,6 +7,7 @@ mod ir;
 mod statement;
 
 pub use adapter::DatabaseAdapter;
+pub use config::{ConnectionConfig, Version};
 pub use dialect::Dialect;
 pub use diff::DiffOp;
 pub use error::{
