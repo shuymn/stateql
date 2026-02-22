@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For Safety S6-S11 regressions, keep a dedicated core sweep test (`safety_s6_s11_test`) for cross-module diff/executor guarantees and pair SQLite atomicity with a shared fixture module (`tests/support/sqlite_atomicity_fixture.rs`) reused across integration tests.
 - For cross-module safety regression coverage, keep one dedicated `crates/core/tests/safety_*.rs` suite that reuses shared fake adapter/dialect fixtures and asserts both typed error payloads and side-effect counters (`begin/commit/rollback`, generated ops, executed SQL) so fail-fast/no-silent-drop guarantees stay explicit.
 - For YAML online runner semantics, keep the 8-step flow explicit (`apply current -> current idempotency -> forward diff/assert/apply -> desired idempotency -> reverse diff/assert/apply -> final idempotency`) and always compute online diffs against `adapter.export_schema()` plus live `schema_search_path` so `enable_drop`/reverse behavior reflects actual database state.
 - For offline YAML runner semantics, centralize `parse -> normalize -> diff -> generate` in one helper and evaluate `error` expectations outside that flow so flavor-mismatch handling can consistently treat any failure as expected.
@@ -826,4 +827,18 @@
 - **Learnings:**
   - Patterns discovered: Keep safety regressions assertion-heavy on both error variants and side effects (`generated_ops`, `executed_sql`, transaction counters) so “must not silently drop/commit” guarantees are directly pinned.
   - Gotchas encountered: RED-phase expectations were already satisfied by current implementation for these scenarios, so Task 41 completed as regression lock-in without production code fixes.
+---
+## 2026-02-22 - task-42: Add Safety Regressions S6-S11
+- What was implemented: Added a dedicated Safety S6-S11 regression suite in core (`S6` RAII rollback-on-drop, `S7` enable_drop suppression diagnostics, `S8` constraint modification pairing under `enable_drop=false`, `S9` circular FK fallback ordering, `S11` view rebuild closure for unchanged dependents) and a dedicated SQLite `S10` atomicity regression test.
+- Files changed: `crates/core/tests/safety_s6_s11_test.rs`, `crates/dialect-sqlite/tests/safety_s10_sqlite_atomicity_test.rs`, `crates/dialect-sqlite/tests/support/sqlite_atomicity_fixture.rs`, `crates/dialect-sqlite/tests/rebuild_generator_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test safety_s6_s11_test`: PASS (5 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-sqlite --test safety_s10_sqlite_atomicity_test`: PASS (1 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (189 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Consolidating cross-cutting safety checks into one task-scoped regression suite prevents behavior drift across diff/executor modules while keeping existing per-feature tests focused.
+  - Gotchas encountered: Reusable integration-test fixtures that call trait methods (for example `Dialect::connect`) must import the trait explicitly in the fixture module or method resolution fails at compile time.
 ---
