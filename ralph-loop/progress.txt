@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For recursive IR expression trees, keep payload recursion explicit with `Box<Expr>` and isolate shared query/window payloads (`SubQuery`, `WindowSpec`) in a dedicated `ir/expr.rs` module, then re-export through `ir.rs` and `lib.rs` to stabilize downstream imports.
 - For IR enums that must keep `Value::Float(f64)`, use `PartialEq` for the base type and provide a dedicated `f64::total_cmp`-based helper (for Eq-like paths) instead of introducing `ordered-float`.
 - For RAII transaction contracts, centralize `COMMIT`/`ROLLBACK` behavior inside `stateql_core::Transaction` and keep adapter implementations focused on connection-specific `execute`/`begin` plumbing.
 - For trait-contract expansion tasks, lock the required method set with a dedicated core integration test (`crates/core/tests/*_contract_test.rs`) that calls each trait method, then update every dialect crate in the same change so `cargo check --workspace` stays green.
@@ -88,4 +89,19 @@
 - **Learnings:**
   - Patterns discovered: Keep `Value::Float(f64)` in canonical IR and enforce deterministic equality needs through a dedicated `total_cmp` helper, while regular IR comparisons remain `PartialEq`.
   - Gotchas encountered: `NaN` intentionally fails `PartialEq`; tests should pin both behaviors (`PartialEq` vs total-order helper) to avoid accidental equality semantics drift.
+---
+
+## 2026-02-22 - task-7: Add Expression AST Core Variants
+- What was implemented: Added a new `ir/expr.rs` module with core expression AST coverage required by the plan (`Expr`, `Literal`, `BinaryOperator`, `UnaryOperator`, `ComparisonOp`, `IsTest`, `SetQuantifier`, `WindowSpec`, `SubQuery`), wired exports through `ir.rs` and `lib.rs`, and completed RED->GREEN using `expr_ast_test`.
+- Files changed: `crates/core/src/ir.rs`, `crates/core/src/ir/expr.rs`, `crates/core/src/lib.rs`, `crates/core/tests/expr_ast_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test expr_ast_test`: PASS (2 passed, 0 failed).
+  - `cargo check -p stateql-dialect-postgres -p stateql-dialect-mysql -p stateql-dialect-sqlite -p stateql-dialect-mssql`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (17 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep expression variants grouped by intent (leaf/operator/range/function/compound/fallback) so future variant additions remain localized and readable.
+  - Gotchas encountered: Clippy `approx_constant` (`3.14`) can fail test code under workspace-wide `-D warnings`; use `std::f64::consts::PI` in fixture literals.
 ---
