@@ -15,10 +15,10 @@ pub use annotation::{
 pub use config::{ConnectionConfig, Version};
 pub use dialect::Dialect;
 pub use diff::{
-    ColumnChange, DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, DiffConfig, DiffOp,
-    DomainChange, EquivalencePolicy, EquivalencePolicyContractError, SequenceChange, TypeChange,
-    custom_types_equivalent, exprs_equivalent, is_mysql_change_column_full_redefinition,
-    verify_equivalence_policy_contract,
+    ColumnChange, DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, DiffConfig, DiffEngine,
+    DiffOp, DomainChange, EquivalencePolicy, EquivalencePolicyContractError, SequenceChange,
+    TypeChange, custom_types_equivalent, exprs_equivalent,
+    is_mysql_change_column_full_redefinition, verify_equivalence_policy_contract,
 };
 pub use error::{
     DiffError, Error, ExecutionError, GenerateError, ParseError, Result, SourceLocation,

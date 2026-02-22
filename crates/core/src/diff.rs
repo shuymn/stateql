@@ -1,7 +1,9 @@
+pub mod compare;
 pub mod engine;
 pub mod policy;
 pub mod types;
 
+pub use compare::DiffEngine;
 pub use policy::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, DiffConfig, EquivalencePolicy,
     EquivalencePolicyContractError, custom_types_equivalent, exprs_equivalent,
