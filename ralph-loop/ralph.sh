@@ -86,8 +86,11 @@ auto_commit() {
   if [ "$has_code_changes" = true ]; then
     git add crates/
     if ! git commit -m "$code_msg"; then
-      echo "  [ralph] ERROR: code commit failed — stopping loop"
-      exit 2
+      echo "  [ralph] WARN: code commit failed, retrying with --no-gpg-sign..."
+      if ! git commit --no-gpg-sign -m "$code_msg"; then
+        echo "  [ralph] ERROR: code commit failed — stopping loop"
+        exit 2
+      fi
     fi
     echo "  [ralph] Code committed: $code_msg"
   fi
@@ -104,8 +107,11 @@ auto_commit() {
 
     git add ralph-loop/
     if ! git commit -m "chore(ralph): mark ${task_id} complete in PRD and progress"; then
-      echo "  [ralph] ERROR: tracking commit failed — stopping loop"
-      exit 2
+      echo "  [ralph] WARN: tracking commit failed, retrying with --no-gpg-sign..."
+      if ! git commit --no-gpg-sign -m "chore(ralph): mark ${task_id} complete in PRD and progress"; then
+        echo "  [ralph] ERROR: tracking commit failed — stopping loop"
+        exit 2
+      fi
     fi
     echo "  [ralph] Tracking committed for ${task_id}"
   fi
