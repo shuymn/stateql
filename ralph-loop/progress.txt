@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For PostgreSQL normalization contracts, keep object-level normalization in `normalize_object` and cross-object canonicalization in a schema pass (`normalize_schema`) invoked from parser output so sequence/partition folding can run before core diff without changing the core `Dialect::normalize(&mut SchemaObject)` trait boundary.
 - For PostgreSQL generator contracts, keep SQL emission in a single op-dispatch (`emit_op`) and centralize unsupported payload failures through `unsupported_diff_op`, with conservative `DropView + CreateView -> CREATE OR REPLACE VIEW` optimization only when compatibility is provable from payload.
 - For PostgreSQL parser fail-fast behavior, derive per-statement metadata from parser spans, trim leading whitespace before computing line numbers, and route conversion failures through one wrapper (`statement_conversion_error`) so `statement_index`/`source_sql`/`source_location` stay consistent.
 - For export idempotency checks, keep the orchestrator’s export pipeline as a reusable helper (`export_sql_from_input`) plus a comparison helper (`export_roundtrip_matches`) so round-trip verification logic stays aligned with runtime export rendering.
@@ -558,4 +559,18 @@
 - **Learnings:**
   - Patterns discovered: Keeping generator dispatch and unsupported construction centralized makes it straightforward to enforce fail-fast behavior for malformed variant payloads while still supporting an exhaustive `DiffOp` match.
   - Gotchas encountered: Reusing `crates/core/tests/support/diffop_fixtures.rs` cross-crate in dialect tests needs a local `#[allow(dead_code)]` on the included module to keep workspace `-D warnings` clean.
+---
+## 2026-02-22 - task-33a: PostgreSQL Normalizer
+- What was implemented: Added a dedicated PostgreSQL normalizer module with split helpers (`types`, `expr`, `sequence`, `partition`), wired `PostgresDialect::normalize` to it, and integrated a schema-level normalize pass into the parser pipeline so parsed PostgreSQL objects are canonicalized immediately after annotation attachment. Implemented custom type alias/case normalization, serial/identity sequence representation normalization, and partition child folding (`CREATE TABLE ... PARTITION OF ...`) into parent `PartitionElement` entries.
+- Files changed: `crates/dialect-postgres/src/normalize.rs`, `crates/dialect-postgres/src/lib.rs`, `crates/dialect-postgres/src/parser.rs`, `crates/dialect-postgres/src/extra_keys.rs`, `crates/dialect-postgres/tests/normalize_representation_rules_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-postgres --test normalize_representation_rules_test`: PASS (3 passed, 0 failed).
+  - Partition child -> `PartitionElement` folding verified in `folds_partition_children_into_parent_partition_elements`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (107 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep partition-child lineage in parser metadata (`postgres.partition_parent_*`) and perform fold/removal in a single schema-level normalizer pass so parent partition state stays deterministic and child tables never leak into diff input.
+  - Gotchas encountered: `pg_query` cannot deparse partition key/bound sub-nodes as top-level SQL; robust conversion must read protobuf node variants (`PartitionElem`, `AConst`, `ColumnRef`) directly instead of relying on `deparse()`.
 ---
