@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For staged diff-engine development, keep `DiffEngine::diff` split into explicit phases (`compare_*` first, then a dedicated resolve/order hook) so name resolution and ordering tasks can evolve without coupling to object-diff logic.
 - For injected semantic-equivalence hooks, keep strict equality as the first-stage gate via a shared fallback helper (`strict_or_policy`) and enforce policy purity assumptions with a reusable contract validator (symmetry + repeated-call stability checks).
 - For dialect-specific `Column.extra` metadata, define key constants in core (`stateql_core::extra_keys::<dialect>::*`) and consume those constants in fixtures/tests to prevent parser/generator key drift before dialect implementations land.
 - For wide contract enums under workspace `-D warnings`, pair an exhaustive variant-tag `match` helper with an `all_*_variants()` fixture list; this catches new-variant drift at compile time, and if `clippy::large_enum_variant` fires, box only the largest payload field instead of suppressing the lint.
@@ -230,4 +231,19 @@
 - **Learnings:**
   - Patterns discovered: Contract-check helpers are easiest to keep deterministic when they evaluate both forward/backward symmetry and repeated-call stability per case index, returning a typed violation enum for focused assertions.
   - Gotchas encountered: Moving shared contracts from `dialect.rs` into `diff` requires synchronized re-export updates in `lib.rs`; otherwise integration tests fail with unresolved root imports before behavior tests run.
+---
+
+## 2026-02-22 - task-15: Implement Core Object Comparison (Table/Column/Index Baseline)
+- What was implemented: Added baseline `DiffEngine` comparison in new `diff/compare.rs` with separated phases (`compare_objects` then `resolve_and_order`), implemented table create/drop diffing, column add/drop plus `AlterColumn` change detection (`SetType`, `SetNotNull`, `SetDefault`), index add/drop diffing by `(owner, name)`, policy-aware expression comparison for column defaults and named CHECK constraints, and fail-fast S5 owner validation for top-level indexes.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/lib.rs`, `crates/core/tests/diff_core_compare_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test diff_core_compare_test`: PASS (6 passed, 0 failed).
+  - `DiffEngine::diff` separation check: PASS (`compare_objects(...)` and `resolve_and_order(...)` are distinct functions in `crates/core/src/diff/compare.rs`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (43 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Splitting baseline diff into object-kind helpers (`compare_table`, `compare_columns`, `compare_indexes`) keeps Task 17+ name resolution and Task 22 ordering work additive instead of requiring rewrites.
+  - Gotchas encountered: Baseline comparison currently rejects non-table/index object kinds with `DiffError` to avoid silent omissions; Task 15b needs to expand this coverage deliberately rather than weakening fail-fast behavior.
 ---
