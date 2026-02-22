@@ -93,6 +93,17 @@ auto_commit() {
     echo "  [ralph] Code committed: $code_msg"
   fi
 
+  # Fallback: lefthook pre-commit compiles the workspace (clippy, check, nextest),
+  # which may produce Cargo.lock changes that did not exist before the commit.
+  # Since these changes originate from the hook itself, re-running the hook would
+  # produce the same result, so we skip it here.
+  if ! git diff --quiet -- Cargo.lock; then
+    git add Cargo.lock
+    if LEFTHOOK=0 git commit --no-gpg-sign -m "chore: update Cargo.lock"; then
+      echo "  [ralph] Cargo.lock committed (post-hook fallback)"
+    fi
+  fi
+
   # 2. Commit tracking changes (ralph-loop/)
   if ! git diff --quiet -- ralph-loop/; then
     # Extract task-ID by comparing completed tasks in HEAD vs working copy
