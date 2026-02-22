@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For `sqlparser-rs` dialect parse foundations (MySQL/SQLite/MSSQL), keep the pipeline as `AnnotationExtractor::extract -> parser -> fail-fast conversion loop -> attach_annotations` and derive `statement_index`/`source_sql`/`source_location.line` from a quote/comment-aware statement splitter so non-`pg_query` backends keep deterministic parse diagnostics.
 - For PostgreSQL residual expression equivalence, keep normalize() as the primary canonicalizer and scope policy matching to deterministic `Expr::Raw` spellings (casted integer literals, redundant outer parentheses, whitespace collapse), returning `false` for non-raw structural mismatches.
 - For PostgreSQL adapter/export contracts, centralize catalog SQL in `export_queries.rs` and keep `connect()` fail-fast by validating `SHOW server_version` (`13+`) plus parsing `SHOW search_path` once into normalized path entries (drop `$user`/`pg_catalog`/`pg_temp*`) before diff wiring.
 - For PostgreSQL normalization contracts, keep object-level normalization in `normalize_object` and cross-object canonicalization in a schema pass (`normalize_schema`) invoked from parser output so sequence/partition folding can run before core diff without changing the core `Dialect::normalize(&mut SchemaObject)` trait boundary.
@@ -607,4 +608,20 @@
 - **Learnings:**
   - Patterns discovered: For residual expression equivalence, canonicalize text with quote-aware whitespace folding and balanced outer-paren stripping before narrow cast-literal handling; keep policy pure/deterministic and leave structural normalization to dialect normalizers.
   - Gotchas encountered: Running quality gates concurrently causes transient cargo build-lock waits (`Blocking waiting for file lock on build directory`); the runs still passed once locks were released.
+---
+## 2026-02-22 - task-34: Add MySQL/SQLite/MSSQL Parse Pipelines (`sqlparser-rs`)
+- What was implemented: Added fail-fast parser pipelines for MySQL/SQLite/MSSQL (`AnnotationExtractor::extract -> sqlparser parse -> statement conversion -> attach_annotations`), introduced per-dialect parser and `extra_keys` modules, replaced parse stubs in all three dialect `lib.rs` files, and added integration tests for unsupported-statement context plus orphan-annotation fail-fast behavior.
+- Files changed: `Cargo.lock`, `crates/dialect-mysql/Cargo.toml`, `crates/dialect-sqlite/Cargo.toml`, `crates/dialect-mssql/Cargo.toml`, `crates/dialect-mysql/src/lib.rs`, `crates/dialect-sqlite/src/lib.rs`, `crates/dialect-mssql/src/lib.rs`, `crates/dialect-mysql/src/parser.rs`, `crates/dialect-sqlite/src/parser.rs`, `crates/dialect-mssql/src/parser.rs`, `crates/dialect-mysql/src/extra_keys.rs`, `crates/dialect-sqlite/src/extra_keys.rs`, `crates/dialect-mssql/src/extra_keys.rs`, `crates/dialect-mysql/tests/parser_test.rs`, `crates/dialect-sqlite/tests/parser_test.rs`, `crates/dialect-mssql/tests/parser_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-dialect-mysql --test parser_test`: PASS (3 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-sqlite --test parser_test`: PASS (3 passed, 0 failed).
+  - `cargo nextest run -p stateql-dialect-mssql --test parser_test`: PASS (3 passed, 0 failed).
+  - All three parser test suites explicitly verify `statement_index` / `source_sql` / `source_location.line` retention on unsupported statements and orphan annotation fail-fast behavior: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (124 passed, 0 failed, 1 skipped).
+- **Learnings:**
+  - Patterns discovered: In `sqlparser-rs` dialects, keep conversion helpers dialect-local but standardize parse-error wrapping/signature (`statement_conversion_error`) so fail-fast metadata remains uniform across backends.
+  - Gotchas encountered: `sqlparser-rs` does not provide stable per-statement source offsets for this pipeline, so a local quote/comment-aware statement splitter is needed to populate deterministic `SourceLocation.line` values.
 ---
