@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For circular FK fallback, preprocess dependency graphs in `crates/core/src/diff/cycle.rs` so only cycle-forming FK edges are split into `AddForeignKey`/`DropForeignKey` ops, while self-referential FKs stay embedded on `CreateTable`.
 - For DDL planning boundaries, keep `DdlPlanner`/`DdlPlan` in `crates/core/src/plan.rs` and route `DiffEngine` ordering through `build_ddl_plan(...)` so ordering rules stay single-sourced in Task 22 sorter logic.
 - For deterministic diff ordering, centralize sort logic in `crates/core/src/ordering.rs` with explicit priority/sub-priority enums and apply dependency topological sorting only inside the relevant priority groups (`CreateTable`, `CreateView`), while preserving original declaration order as the fallback tie-breaker.
 - For view rebuild closure, derive changed-view dependents from the current schema graph and emit `DropView` in reverse topological order plus `CreateView` in desired topological order, so unchanged dependent views are rebuilt deterministically.
@@ -393,4 +394,18 @@
 - **Learnings:**
   - Patterns discovered: Keep planner construction API as a thin boundary over deterministic sorting so orchestrator/executor tasks can consume a stable plan type without re-embedding ordering rules.
   - Gotchas encountered: Re-exporting `sort_diff_ops` from both `diff` and `plan` causes duplicate root imports; planner boundary migration needs a single export source (`plan`).
+---
+## 2026-02-22 - task-23: Implement Circular FK Fallback
+- What was implemented: Added dedicated circular-FK graph handling and wired it into `DiffEngine` so create-side FK cycles are split into `AddForeignKey` ops after `CreateTable`, drop-side FK cycles emit `DropForeignKey` before `DropTable`, and self-referential FKs are excluded from cycle fallback.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff/cycle.rs`, `crates/core/tests/circular_fk_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test circular_fk_test`: PASS (3 passed, 0 failed).
+  - `circular_fk_test` explicitly verifies CREATE fallback, DROP fallback, and self-FK exclusion: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (83 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Preserve declaration-order semantics for create/drop table passes by iterating table buckets in source order and keeping cycle-specific graph logic isolated from general ordering priorities.
+  - Gotchas encountered: Drop-side cycle fallback can only produce `DropForeignKey` for named constraints (`ForeignKey.name: Some(...)`), so unnamed FKs remain drop-by-table behavior.
 ---
