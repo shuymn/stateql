@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For dialect-contract stabilization, keep contract semantics executable by pairing `Dialect` rustdoc doctests with a maintained `crates/core/examples/dialect_template.rs` and enforce link correctness crate-wide via `#![deny(rustdoc::broken_intra_doc_links)]`.
 - For single-binary clap CLI mode handling, keep `--apply/--dry-run/--export` mutually exclusive, infer `Mode::DryRun` only when desired SQL input exists (`--file` or non-terminal stdin), and route all dialects through one `run_with_dialect` helper so `enable_drop` and output behavior stay consistent.
 - For CLI dialect feature gating, keep dialect crates as optional `dep:` feature targets and derive accepted subcommands/usage text from one cfg-driven enabled-dialect list so disabled dialect builds cannot reference unavailable crates.
 - For quote-aware YAML migration, convert `LegacyIgnoreQuotes` manifest entries from `skipped` to concrete `ported` case references only alongside real quote-sensitive fixtures and enforce the boundary with one dedicated regression suite (`yaml_quote_aware_regression_test`) plus shared SQL comparison helpers (`sql_matches_quote_aware`).
@@ -942,4 +943,18 @@
 - **Learnings:**
   - Patterns discovered: Keep dialect-specific connection arguments as thin structs around a shared mode/input pipeline, then normalize to `ConnectionConfig` in one helper to avoid drift across subcommands.
   - Gotchas encountered: Integration tests that feed stdin into child processes must close the child stdin handle (`drop(stdin)`) before waiting, or tests can hang indefinitely under `nextest`.
+---
+## 2026-02-22 - task-45: Stabilize Dialect Contract Documentation
+- What was implemented: Stabilized `Dialect` contract documentation by adding fail-fast and unsupported-op rustdoc guidance in `dialect.rs`, introducing a passing trait-level doctest that asserts `GenerateError::UnsupportedDiffOp`, enabling crate-wide broken intra-doc link denial in `lib.rs`, adding a maintained implementation template example in `crates/core/examples/dialect_template.rs`, and documenting the stabilized contract in `docs/2026-02-21-dialect-trait-stabilization.md`.
+- Files changed: `crates/core/src/dialect.rs`, `crates/core/src/lib.rs`, `crates/core/examples/dialect_template.rs`, `docs/2026-02-21-dialect-trait-stabilization.md`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo test -p stateql-core --doc`: PASS (1 passed, 0 failed).
+  - `cargo doc -p stateql-core --no-deps`: PASS (completed with no warnings).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (205 passed, 0 failed, 6 skipped).
+- **Learnings:**
+  - Patterns discovered: Keep dialect contract semantics executable in rustdoc and mirror that implementation shape in one template example file to reduce drift between guidance and code.
+  - Gotchas encountered: Adding crate-level broken-link denial is safe once rustdoc links use fully-qualified paths (`crate::...`) for enum variants in trait docs.
 ---
