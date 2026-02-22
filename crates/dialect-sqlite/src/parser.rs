@@ -287,6 +287,11 @@ fn convert_statement(
 }
 
 fn apply_preconversion_hints(statement_sql: &str, table: &mut Table) {
+    table.options.extra.insert(
+        extra_keys::TABLE_SOURCE_SQL.to_string(),
+        Value::String(statement_sql.trim().to_string()),
+    );
+
     let normalized = statement_sql.to_ascii_uppercase();
 
     if normalized.contains("WITHOUT ROWID") {
