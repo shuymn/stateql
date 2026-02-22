@@ -1,4 +1,5 @@
 mod adapter;
+mod annotation;
 mod config;
 mod dialect;
 mod diff;
@@ -7,6 +8,7 @@ mod ir;
 mod statement;
 
 pub use adapter::{DatabaseAdapter, Transaction};
+pub use annotation::{AnnotationExtractor, RenameAnnotation};
 pub use config::{ConnectionConfig, Version};
 pub use dialect::{
     DEFAULT_EQUIVALENCE_POLICY, DefaultEquivalencePolicy, Dialect, EquivalencePolicy,
