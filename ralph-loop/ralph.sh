@@ -55,9 +55,9 @@ quality_gate() {
 auto_commit() {
   local commit_msg_file="$SCRIPT_DIR/.commit-msg"
 
-  # Check for any uncommitted changes (tracked or untracked under crates/)
+  # Check for any uncommitted changes (tracked or untracked under monitored dirs)
   if git diff --quiet && git diff --cached --quiet \
-     && [ -z "$(git ls-files --others --exclude-standard crates/)" ]; then
+     && [ -z "$(git ls-files --others --exclude-standard crates/ docs/ tests/)" ]; then
     return 0
   fi
 
@@ -81,8 +81,8 @@ auto_commit() {
     rm -f "$commit_msg_file"
   fi
 
-  # 1. Commit code changes (crates/ + Cargo.lock) — check staged changes
-  if ! git diff --cached --quiet -- crates/ Cargo.lock; then
+  # 1. Commit code changes (crates/, Cargo.lock, docs/, tests/) — check staged changes
+  if ! git diff --cached --quiet -- crates/ Cargo.lock docs/ tests/; then
     if ! git commit -m "$code_msg"; then
       echo "  [ralph] WARN: code commit failed, retrying with --no-gpg-sign..."
       if ! git commit --no-gpg-sign -m "$code_msg"; then
