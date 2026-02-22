@@ -1,5 +1,30 @@
 ## Codebase Patterns
-(Updated as patterns are discovered during implementation)
+- Task boundary tests live under `crates/core/tests/` and can enforce source-level boundaries by reading `src/*.rs` via `env!("CARGO_MANIFEST_DIR")`.
+- Keep early-phase core placeholders as minimal re-exported stubs in `crates/core/src/lib.rs` so downstream dialect crates continue compiling.
+- For early contract tasks, `#[path = "../src/*.rs"]` tests in `crates/core/tests/` are useful to lock internal type shapes before public re-exports are finalized.
 
 ---
 
+## 2026-02-22 - task-0: Remove Bootstrap Placeholders
+- What was implemented: Removed bootstrap placeholders (`plan_diff`, smoke test, and legacy diff variants) and kept Task 0 stubs (`CoreError/CoreResult`, `Ident`, `SchemaObject`, `DiffOp`, `Statement`, `Dialect`) as compile boundaries.
+- Files changed: `crates/core/src/lib.rs`, `crates/core/src/ir.rs`, `crates/core/src/diff.rs`, `crates/core/tests/bootstrap_boundary_test.rs`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test bootstrap_boundary_test`: PASS (2 passed, 0 failed).
+  - `rg -n "plan_diff|CreateObject|DropObject|smoke_parse_diff_render" crates/core -S`: no matches.
+  - `cargo check -p stateql-core`: PASS.
+  - Public Task 0 error boundary (`CoreError/CoreResult`) verified in `bootstrap_boundary_test`.
+- **Learnings:**
+  - Patterns discovered: Use integration tests to pin "removed symbol" boundaries with file-content assertions while avoiding hard-coded legacy tokens in source.
+  - Gotchas encountered: `.git` is read-only in this sandbox (`index.lock` cannot be created), so `git add`/`git commit` cannot run here.
+---
+
+## 2026-02-22 - task-1: Add Stage-Typed Error Enums
+- What was implemented: Added stage-typed errors (`ParseError`, `DiffError`, `GenerateError`, `ExecutionError`) and `SourceLocation`, plus RED->GREEN tests that assert typed variants and parse context retention on `ParseError::StatementConversion`.
+- Files changed: `crates/core/src/error.rs`, `crates/core/tests/error_types_test.rs`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test error_types_test`: PASS (2 passed, 0 failed).
+  - `ParseError::StatementConversion` statement context + `SourceLocation` retention: PASS in `parse_error_statement_conversion_keeps_statement_context_and_location`.
+- **Learnings:**
+  - Patterns discovered: Boundary-phase error contracts can be pinned with integration tests that include source modules directly while public exports are still in flux.
+  - Gotchas encountered: `thiserror` download failed in this sandbox (`index.crates.io` DNS resolution error), so manual `Display`/`Error` impls were used; `git commit` still fails because `.git/index.lock` cannot be created.
+---
