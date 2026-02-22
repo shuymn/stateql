@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For partition diffing in `DiffEngine`, delegate table partition logic to a dedicated `diff::partition` module and perform a two-stage compare (partition key: strategy+columns, then partition elements) so add/drop/change decomposition stays isolated from column/check comparison code.
 - For expanding `SchemaObject` diff coverage incrementally, keep `match SchemaObject` paths exhaustive (no wildcard arms) and route not-yet-supported variants through explicit `DiffError` fail-fast checks.
 - For staged diff-engine development, keep `DiffEngine::diff` split into explicit phases (`compare_*` first, then a dedicated resolve/order hook) so name resolution and ordering tasks can evolve without coupling to object-diff logic.
 - For injected semantic-equivalence hooks, keep strict equality as the first-stage gate via a shared fallback helper (`strict_or_policy`) and enforce policy purity assumptions with a reusable contract validator (symmetry + repeated-call stability checks).
@@ -264,4 +265,18 @@
   - Patterns discovered: For staged diff growth, isolate newly added object-family comparisons into a dedicated module and call it from `DiffEngine::compare_objects` so table/index baseline logic stays stable while enabling per-kind expansion.
   - Gotchas encountered: `DropSchema` uses unqualified `QualifiedName { schema: None, name }`, so tests should not assume default schema qualification for schema-drop ops.
 ---
-
+## 2026-02-22 - task-15c: Implement Partition Diff Comparison (`AddPartition` / `DropPartition`)
+- What was implemented: Added explicit partition diff logic by creating `crates/core/src/diff/partition.rs` and wiring `DiffEngine` table comparison to call it; implemented partition add/drop and change decomposition (`DropPartition` + `AddPartition`) including bound-sensitive detection for `MAXVALUE` and `FromTo`.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff/partition.rs`, `crates/core/tests/partition_diff_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test partition_diff_test`: PASS (5 passed, 0 failed).
+  - Table compare now delegates partition diff responsibility to `partition::diff_partition(...)`: PASS (`crates/core/src/diff/compare.rs`).
+  - Task 22 (22h) ordering linkage for partition ops: PASS via explicit drop-before-add assertion on bound change in `partition_diff_test` (`treats_from_to_bound_change_as_partition_change`).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (54 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Comparing partition key (`strategy` + normalized partition columns) before element-level diffing avoids mixing table-level partition-shape changes with per-partition add/drop reconciliation.
+  - Gotchas encountered: Iterating a `BTreeMap<_, &PartitionElement>` yields `&&PartitionElement`; the diff helper must clone from dereferenced values (`(*element).clone()`) to build owned `DiffOp` payloads cleanly.
+---
