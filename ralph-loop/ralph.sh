@@ -63,9 +63,10 @@ auto_commit() {
 
   echo "  [ralph] Uncommitted changes detected, auto-committing..."
 
-  # Run quality gates; skip commit if tests fail
+  # Run quality gates; abort loop if tests fail so diffs don't accumulate
   if ! quality_gate; then
-    return 0
+    echo "  [ralph] ERROR: quality gates failed — stopping loop to avoid mixed diffs"
+    exit 2
   fi
 
   # Read commit message written by the agent
@@ -84,7 +85,10 @@ auto_commit() {
 
   if [ "$has_code_changes" = true ]; then
     git add crates/
-    git commit -m "$code_msg" || true
+    if ! git commit -m "$code_msg"; then
+      echo "  [ralph] ERROR: code commit failed — stopping loop"
+      exit 2
+    fi
     echo "  [ralph] Code committed: $code_msg"
   fi
 
@@ -99,7 +103,10 @@ auto_commit() {
     task_id=${task_id:-unknown}
 
     git add ralph-loop/
-    git commit -m "chore(ralph): mark ${task_id} complete in PRD and progress" || true
+    if ! git commit -m "chore(ralph): mark ${task_id} complete in PRD and progress"; then
+      echo "  [ralph] ERROR: tracking commit failed — stopping loop"
+      exit 2
+    fi
     echo "  [ralph] Tracking committed for ${task_id}"
   fi
 }
