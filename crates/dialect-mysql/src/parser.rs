@@ -287,6 +287,11 @@ fn convert_statement(
 }
 
 fn apply_preconversion_hints(statement_sql: &str, table: &mut Table) {
+    table.options.extra.insert(
+        extra_keys::TABLE_SOURCE_SQL.to_string(),
+        Value::String(statement_sql.trim().to_string()),
+    );
+
     let normalized = statement_sql.to_ascii_uppercase();
 
     if normalized.contains("CHANGE COLUMN") {
@@ -308,6 +313,37 @@ fn apply_preconversion_hints(statement_sql: &str, table: &mut Table) {
             extra_keys::TABLE_HAS_AUTO_INCREMENT.to_string(),
             Value::Bool(true),
         );
+    }
+
+    if normalized.contains("PARTITION BY") {
+        table.options.extra.insert(
+            extra_keys::TABLE_HAS_PARTITIONING.to_string(),
+            Value::Bool(true),
+        );
+        if let Some(partition_clause) = extract_partition_clause(statement_sql) {
+            table.options.extra.insert(
+                extra_keys::TABLE_PARTITION_SQL.to_string(),
+                Value::String(partition_clause),
+            );
+        }
+    }
+}
+
+fn extract_partition_clause(statement_sql: &str) -> Option<String> {
+    let marker = "PARTITION BY";
+    let index = statement_sql
+        .to_ascii_uppercase()
+        .find(marker)
+        .or_else(|| statement_sql.to_ascii_uppercase().find(" PARTITION "))?;
+    let clause = statement_sql
+        .get(index..)?
+        .trim()
+        .trim_end_matches(';')
+        .trim();
+    if clause.is_empty() {
+        None
+    } else {
+        Some(clause.to_string())
     }
 }
 
