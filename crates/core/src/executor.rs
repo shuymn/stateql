@@ -1,6 +1,4 @@
-use std::{error::Error as StdError, io::ErrorKind};
-
-use crate::{DatabaseAdapter, ExecutionError, Result, Statement, Transaction};
+use crate::{DatabaseAdapter, Result, Statement, Transaction};
 
 pub struct Executor<'a> {
     adapter: &'a mut dyn DatabaseAdapter,
@@ -32,12 +30,7 @@ impl<'a> Executor<'a> {
                 transactional: false,
                 ..
             } => self.execute_non_transactional_statement(start, sql),
-            Statement::BatchBoundary => Err(unsupported_statement_error(
-                start,
-                "<batch-boundary>".to_string(),
-                "batch boundaries are not supported yet",
-            )
-            .into()),
+            Statement::BatchBoundary => Ok(start + 1),
         }
     }
 
@@ -64,8 +57,10 @@ impl<'a> Executor<'a> {
                 Statement::Sql {
                     transactional: false,
                     ..
+                } => break,
+                Statement::BatchBoundary => {
+                    cursor += 1;
                 }
-                | Statement::BatchBoundary => break,
             }
         }
 
@@ -85,22 +80,4 @@ impl<'a> Executor<'a> {
 
         Ok(())
     }
-}
-
-fn unsupported_statement_error(
-    statement_index: usize,
-    sql: String,
-    message: &str,
-) -> ExecutionError {
-    ExecutionError::StatementFailed {
-        statement_index,
-        sql,
-        executed_statements: statement_index,
-        source_location: None,
-        source: boxed_invalid_input_error(message),
-    }
-}
-
-fn boxed_invalid_input_error(message: &str) -> Box<dyn StdError + Send + Sync> {
-    Box::new(std::io::Error::new(ErrorKind::InvalidInput, message))
 }
