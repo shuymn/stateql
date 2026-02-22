@@ -48,10 +48,10 @@ impl<'a> Orchestrator<'a> {
     ) -> Result<OrchestratorOutput> {
         let mut adapter = self.dialect.connect(connection_config)?;
         let current_sql = adapter.export_schema()?;
-        let current = self.parse_and_normalize(&current_sql)?;
         match options.mode {
-            Mode::Export => Ok(ExportSql(self.render_export(&current)?)),
+            Mode::Export => Ok(ExportSql(self.export_sql_from_input(&current_sql)?)),
             Mode::Apply | Mode::DryRun => {
+                let current = self.parse_and_normalize(&current_sql)?;
                 let desired = self.parse_and_normalize(desired_sql)?;
                 let diff_config = self.diff_config(adapter.as_ref(), options.enable_drop);
                 let diff_outcome =
@@ -71,12 +71,22 @@ impl<'a> Orchestrator<'a> {
         }
     }
 
+    pub fn export_roundtrip_matches(&self, exported_sql: &str) -> Result<bool> {
+        let re_exported_sql = self.export_sql_from_input(exported_sql)?;
+        Ok(exported_sql == re_exported_sql)
+    }
+
     fn parse_and_normalize(&self, sql: &str) -> Result<Vec<SchemaObject>> {
         let mut objects = self.dialect.parse(sql)?;
         for object in &mut objects {
             self.dialect.normalize(object);
         }
         Ok(objects)
+    }
+
+    fn export_sql_from_input(&self, sql: &str) -> Result<String> {
+        let objects = self.parse_and_normalize(sql)?;
+        self.render_export(&objects)
     }
 
     fn diff_config(&self, adapter: &dyn DatabaseAdapter, enable_drop: bool) -> DiffConfig {

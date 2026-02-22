@@ -1,25 +1,19 @@
-use stateql_core::{
-    Mode, Orchestrator, OrchestratorOptions, OrchestratorOutput, SchemaObject, Table,
-};
+use stateql_core::{Mode, Orchestrator, OrchestratorOptions, OrchestratorOutput};
 
 #[path = "support/fake_dialect.rs"]
 mod fake_dialect;
+#[path = "support/orchestrator_export_fixture.rs"]
+mod orchestrator_export_fixture;
 
 use fake_dialect::{FakeDialect, test_connection_config};
-
-const CURRENT_SQL: &str = "CURRENT_SQL";
-const DESIRED_SQL_IGNORED: &str = "DESIRED_SQL_IGNORED";
+use orchestrator_export_fixture::{
+    DESIRED_SQL_IGNORED, configure_export_fixture, expected_export_sql,
+};
 
 #[test]
 fn export_routes_current_schema_through_to_sql() {
     let dialect = FakeDialect::default();
-    dialect.set_export_schema_sql(CURRENT_SQL);
-
-    let expected_objects = vec![
-        SchemaObject::Table(Table::named("users")),
-        SchemaObject::Table(Table::named("orders")),
-    ];
-    dialect.set_parse_result(CURRENT_SQL, expected_objects.clone());
+    let expected_objects = configure_export_fixture(&dialect);
 
     let output = Orchestrator::new(&dialect)
         .run(
@@ -47,9 +41,6 @@ fn export_routes_current_schema_through_to_sql() {
         "export must not execute SQL",
     );
 
-    let expected_sql = expected_objects
-        .iter()
-        .map(|obj| format!("{obj:?}\n"))
-        .collect::<String>();
+    let expected_sql = expected_export_sql(&expected_objects);
     assert_eq!(exported_sql, expected_sql);
 }
