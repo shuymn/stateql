@@ -2,6 +2,8 @@
 
 use std::{error::Error as StdError, fmt};
 
+use crate::StatementContext;
+
 type BoxedError = Box<dyn StdError + Send + Sync + 'static>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,8 +103,32 @@ pub enum ExecutionError {
         sql: String,
         executed_statements: usize,
         source_location: Option<SourceLocation>,
+        statement_context: Option<Box<StatementContext>>,
         source: BoxedError,
     },
+}
+
+impl ExecutionError {
+    pub fn statement_failed<E>(
+        statement_index: usize,
+        sql: impl Into<String>,
+        executed_statements: usize,
+        source_location: Option<SourceLocation>,
+        statement_context: Option<StatementContext>,
+        source: E,
+    ) -> Self
+    where
+        E: StdError + Send + Sync + 'static,
+    {
+        Self::StatementFailed {
+            statement_index,
+            sql: sql.into(),
+            executed_statements,
+            source_location,
+            statement_context: statement_context.map(Box::new),
+            source: Box::new(source),
+        }
+    }
 }
 
 impl fmt::Display for ExecutionError {
@@ -113,11 +139,13 @@ impl fmt::Display for ExecutionError {
                 sql,
                 executed_statements,
                 source_location,
+                statement_context,
                 ..
             } => write!(
                 f,
-                "execute statement[{statement_index}] failed after {executed_statements} successes: {sql} (source_location={})",
-                format_location(source_location.as_ref())
+                "execute statement[{statement_index}] failed after {executed_statements} successes: {sql} (source_location={}, statement_context={})",
+                format_location(source_location.as_ref()),
+                format_statement_context(statement_context.as_deref())
             ),
         }
     }
@@ -196,5 +224,12 @@ fn format_location(location: Option<&SourceLocation>) -> String {
             None => line.to_string(),
         },
         None => "unknown".to_string(),
+    }
+}
+
+fn format_statement_context(statement_context: Option<&StatementContext>) -> String {
+    match statement_context {
+        Some(context) => format!("{context:?}"),
+        None => "none".to_string(),
     }
 }

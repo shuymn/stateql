@@ -1,9 +1,6 @@
-#[path = "../src/error.rs"]
-mod error_types;
-
 use std::error::Error as StdError;
 
-use error_types::{DiffError, ExecutionError, GenerateError, ParseError, SourceLocation};
+use stateql_core::{DiffError, ExecutionError, GenerateError, ParseError, SourceLocation};
 
 #[test]
 fn stage_typed_errors_and_source_location_exist() {
@@ -35,6 +32,7 @@ fn stage_typed_errors_and_source_location_exist() {
         sql: "ALTER TABLE users DROP COLUMN legacy;".to_string(),
         executed_statements: 2,
         source_location: Some(location),
+        statement_context: None,
         source: boxed_error("execution failed"),
     };
 
@@ -42,6 +40,7 @@ fn stage_typed_errors_and_source_location_exist() {
     assert!(format!("{diff}").contains("users"));
     assert!(format!("{generate}").contains("sqlite"));
     assert!(format!("{execute}").contains("statement[3]"));
+    assert!(format!("{execute}").contains("statement_context=none"));
 }
 
 #[test]

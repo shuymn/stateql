@@ -32,6 +32,7 @@ fn top_level_error_wraps_stage_errors_with_from() {
         sql: "ALTER TABLE users DROP COLUMN x;".to_string(),
         executed_statements: 2,
         source_location: None,
+        statement_context: None,
         source: boxed_error("execute failed"),
     };
 

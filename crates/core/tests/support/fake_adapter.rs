@@ -117,6 +117,7 @@ impl DatabaseAdapter for FakeAdapter {
                     line: 1,
                     column: None,
                 }),
+                statement_context: None,
                 source: boxed_error(rule.message.clone()),
             }
             .into());

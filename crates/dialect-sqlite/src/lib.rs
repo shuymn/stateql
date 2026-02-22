@@ -64,6 +64,7 @@ impl Dialect for SqliteDialect {
             sql: CONNECT_STUB_SQL.to_string(),
             executed_statements: 0,
             source_location: None,
+            statement_context: None,
             source: boxed_error(CONNECT_NOT_IMPLEMENTED),
         }
         .into())
