@@ -64,13 +64,12 @@ auto_commit() {
 
   # 2. Commit tracking changes (ralph-loop/)
   if ! git diff --quiet -- ralph-loop/; then
-    # Extract task-ID from the commit message (e.g. "feat(core): add X" -> look in prd.json diff)
+    # Extract task-ID by comparing completed tasks in HEAD vs working copy
     local task_id
-    task_id=$(git diff ralph-loop/prd.json \
-      | grep -B4 '^\+.*"passes": true' \
-      | grep '"id"' \
-      | tail -1 \
-      | sed 's/.*"id": "\([^"]*\)".*/\1/') || true
+    task_id=$(diff \
+      <(git show HEAD:ralph-loop/prd.json | jq -r '[.stories[] | select(.passes==true) | .id] | sort[]') \
+      <(jq -r '[.stories[] | select(.passes==true) | .id] | sort[]' ralph-loop/prd.json) \
+      | grep '^>' | sed 's/^> //' | paste -sd, -) || true
     task_id=${task_id:-unknown}
 
     git add ralph-loop/
