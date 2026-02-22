@@ -1,9 +1,9 @@
-use std::{collections::BTreeSet, path::PathBuf};
+use std::path::PathBuf;
 
 use stateql_testkit::{
-    IdempotencyManifestEntry, ManifestStatus, idempotency_manifest_coverage,
-    load_idempotency_manifest_from_path, load_test_cases_from_dir,
-    validate_idempotency_manifest_entries,
+    IdempotencyManifestEntry, idempotency_manifest_coverage, load_idempotency_manifest_from_path,
+    load_test_cases_from_dir, manifest_ported_case_references,
+    validate_idempotency_manifest_entries, yaml_case_references,
 };
 
 const DIALECTS: [&str; 4] = ["postgres", "sqlite", "mysql", "mssql"];
@@ -48,38 +48,20 @@ fn assert_manifest_tracks_all_ported_cases(
     dialect_name: &str,
     entries: &[IdempotencyManifestEntry],
 ) {
-    let mut manifest_ported_cases = BTreeSet::new();
-    for entry in entries {
-        if entry.status != ManifestStatus::Ported {
-            continue;
-        }
+    let manifest_ported_cases = manifest_ported_case_references(entries).unwrap_or_else(|error| {
+        panic!(
+            "failed to collect manifest case references for dialect '{}': {}",
+            dialect_name, error
+        )
+    });
 
-        let Some(case_ref) = entry.case.as_deref() else {
-            panic!("ported entry '{}' must include case reference", entry.id);
-        };
-
-        let normalized_case_ref = case_ref.trim().to_string();
-        assert!(
-            manifest_ported_cases.insert(normalized_case_ref.clone()),
-            "manifest has duplicate ported case reference '{}' for dialect '{}'",
-            normalized_case_ref,
-            dialect_name
-        );
-    }
-
-    let mut actual_cases = BTreeSet::new();
     let files = load_test_cases_from_dir(idempotency_root(dialect_name)).unwrap_or_else(|error| {
         panic!(
             "failed to load idempotency files for dialect '{}': {}",
             dialect_name, error
         )
     });
-
-    for file in files {
-        for case_name in file.cases.keys() {
-            actual_cases.insert(format!("{}::{}", file.file_name, case_name));
-        }
-    }
+    let actual_cases = yaml_case_references(&files);
 
     assert_eq!(
         manifest_ported_cases, actual_cases,

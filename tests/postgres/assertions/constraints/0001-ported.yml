@@ -1,0 +1,45 @@
+constraints_case_01:
+  desired: |
+    CREATE TABLE postgres_constraints_01 (id bigint NOT NULL);
+  up: |
+    CREATE TABLE "postgres_constraints_01" ("id" bigint);
+  down: |
+    DROP TABLE "postgres_constraints_01";
+  enable_drop: true
+
+constraints_case_02:
+  desired: |
+    CREATE TABLE postgres_constraints_02 (id bigint NOT NULL);
+  up: |
+    CREATE TABLE "postgres_constraints_02" ("id" bigint);
+  down: |
+    DROP TABLE "postgres_constraints_02";
+  enable_drop: true
+
+constraints_case_03:
+  desired: |
+    CREATE TABLE postgres_constraints_03 (id bigint NOT NULL);
+  up: |
+    CREATE TABLE "postgres_constraints_03" ("id" bigint);
+  down: |
+    DROP TABLE "postgres_constraints_03";
+  enable_drop: true
+
+constraints_case_04:
+  desired: |
+    CREATE TABLE postgres_constraints_04 (id bigint NOT NULL);
+  up: |
+    CREATE TABLE "postgres_constraints_04" ("id" bigint);
+  down: |
+    DROP TABLE "postgres_constraints_04";
+  enable_drop: true
+
+constraints_case_05:
+  desired: |
+    CREATE TABLE postgres_constraints_05 (id bigint NOT NULL);
+  up: |
+    CREATE TABLE "postgres_constraints_05" ("id" bigint);
+  down: |
+    DROP TABLE "postgres_constraints_05";
+  enable_drop: true
+

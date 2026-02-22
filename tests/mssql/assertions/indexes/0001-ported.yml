@@ -1,0 +1,45 @@
+indexes_case_01:
+  desired: |
+    CREATE TABLE mssql_indexes_01 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_indexes_01 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_indexes_01];
+  enable_drop: true
+
+indexes_case_02:
+  desired: |
+    CREATE TABLE mssql_indexes_02 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_indexes_02 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_indexes_02];
+  enable_drop: true
+
+indexes_case_03:
+  desired: |
+    CREATE TABLE mssql_indexes_03 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_indexes_03 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_indexes_03];
+  enable_drop: true
+
+indexes_case_04:
+  desired: |
+    CREATE TABLE mssql_indexes_04 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_indexes_04 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_indexes_04];
+  enable_drop: true
+
+indexes_case_05:
+  desired: |
+    CREATE TABLE mssql_indexes_05 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_indexes_05 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_indexes_05];
+  enable_drop: true
+

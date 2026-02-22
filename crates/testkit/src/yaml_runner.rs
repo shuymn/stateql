@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -52,6 +52,24 @@ pub struct IdempotencyManifest {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DialectIdempotencyManifest {
+    pub entries: Vec<IdempotencyManifestEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssertionManifest {
+    pub dialects: BTreeMap<String, DialectAssertionManifest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DialectAssertionManifest {
+    pub groups: BTreeMap<String, AssertionManifestGroup>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssertionManifestGroup {
     pub entries: Vec<IdempotencyManifestEntry>,
 }
 
@@ -143,7 +161,21 @@ pub fn load_idempotency_manifest_from_path(path: impl AsRef<Path>) -> Result<Ide
     serde_yaml::from_str(&yaml).map_err(|source| parse_yaml_error(&yaml, source))
 }
 
+pub fn load_assertion_manifest_from_path(path: impl AsRef<Path>) -> Result<AssertionManifest> {
+    let path = path.as_ref();
+    let yaml = std::fs::read_to_string(path).map_err(|source| parse_yaml_io_error(path, source))?;
+    serde_yaml::from_str(&yaml).map_err(|source| parse_yaml_error(&yaml, source))
+}
+
 pub fn validate_idempotency_manifest_entries(entries: &[IdempotencyManifestEntry]) -> Result<()> {
+    validate_manifest_entries(entries)
+}
+
+pub fn validate_assertion_manifest_entries(entries: &[IdempotencyManifestEntry]) -> Result<()> {
+    validate_manifest_entries(entries)
+}
+
+fn validate_manifest_entries(entries: &[IdempotencyManifestEntry]) -> Result<()> {
     let mut seen_ids: BTreeMap<String, ()> = BTreeMap::new();
     let mut seen_cases: BTreeMap<String, ()> = BTreeMap::new();
 
@@ -189,6 +221,14 @@ pub fn validate_idempotency_manifest_entries(entries: &[IdempotencyManifestEntry
 }
 
 pub fn idempotency_manifest_coverage(entries: &[IdempotencyManifestEntry]) -> ManifestCoverage {
+    manifest_coverage(entries)
+}
+
+pub fn assertion_manifest_coverage(entries: &[IdempotencyManifestEntry]) -> ManifestCoverage {
+    manifest_coverage(entries)
+}
+
+fn manifest_coverage(entries: &[IdempotencyManifestEntry]) -> ManifestCoverage {
     let mut ported = 0_usize;
     let mut skipped = 0_usize;
 
@@ -212,6 +252,42 @@ pub fn idempotency_manifest_coverage(entries: &[IdempotencyManifestEntry]) -> Ma
         total,
         coverage_rate,
     }
+}
+
+pub fn manifest_ported_case_references(
+    entries: &[IdempotencyManifestEntry],
+) -> Result<BTreeSet<String>> {
+    let mut manifest_ported_cases = BTreeSet::new();
+    for entry in entries {
+        if entry.status != ManifestStatus::Ported {
+            continue;
+        }
+
+        let case_ref = normalized_manifest_text(entry.case.as_deref()).ok_or_else(|| {
+            runner_assertion_error(format!(
+                "ported entry '{}' must include a non-empty case reference",
+                entry.id
+            ))
+        })?;
+
+        if !manifest_ported_cases.insert(case_ref.to_string()) {
+            return Err(runner_assertion_error(format!(
+                "manifest contains duplicate ported case reference '{case_ref}'"
+            )));
+        }
+    }
+
+    Ok(manifest_ported_cases)
+}
+
+pub fn yaml_case_references(files: &[TestCaseFile]) -> BTreeSet<String> {
+    let mut cases = BTreeSet::new();
+    for file in files {
+        for case_name in file.cases.keys() {
+            cases.insert(format!("{}::{}", file.file_name, case_name));
+        }
+    }
+    cases
 }
 
 pub fn matches_flavor(requirement: Option<&str>, current_flavor: &str) -> bool {
@@ -572,8 +648,17 @@ fn assert_expected_sql(
     )))
 }
 
-fn normalize_sql(sql: &str) -> &str {
-    sql.trim()
+fn normalize_sql(sql: &str) -> String {
+    sql.replace('\r', "")
+        .split(';')
+        .map(collapse_sql_whitespace)
+        .filter(|statement| !statement.is_empty())
+        .collect::<Vec<_>>()
+        .join(";")
+}
+
+fn collapse_sql_whitespace(fragment: &str) -> String {
+    fragment.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn runner_assertion_error(message: impl Into<String>) -> stateql_core::Error {

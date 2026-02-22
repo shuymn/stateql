@@ -1,0 +1,345 @@
+dialects:
+  postgres:
+    groups:
+      tables:
+        entries:
+          - id: cmd/psqldef/assertions_tables.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::tables_case_01
+          - id: cmd/psqldef/assertions_tables.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::tables_case_02
+          - id: cmd/psqldef/assertions_tables.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::tables_case_03
+          - id: cmd/psqldef/assertions_tables.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::tables_case_04
+          - id: cmd/psqldef/assertions_tables.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::tables_case_05
+          - id: cmd/psqldef/assertions_tables.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      indexes:
+        entries:
+          - id: cmd/psqldef/assertions_indexes.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::indexes_case_01
+          - id: cmd/psqldef/assertions_indexes.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::indexes_case_02
+          - id: cmd/psqldef/assertions_indexes.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::indexes_case_03
+          - id: cmd/psqldef/assertions_indexes.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::indexes_case_04
+          - id: cmd/psqldef/assertions_indexes.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::indexes_case_05
+          - id: cmd/psqldef/assertions_indexes.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      constraints:
+        entries:
+          - id: cmd/psqldef/assertions_constraints.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::constraints_case_01
+          - id: cmd/psqldef/assertions_constraints.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::constraints_case_02
+          - id: cmd/psqldef/assertions_constraints.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::constraints_case_03
+          - id: cmd/psqldef/assertions_constraints.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::constraints_case_04
+          - id: cmd/psqldef/assertions_constraints.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::constraints_case_05
+          - id: cmd/psqldef/assertions_constraints.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      views:
+        entries:
+          - id: cmd/psqldef/assertions_views.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::views_case_01
+          - id: cmd/psqldef/assertions_views.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::views_case_02
+          - id: cmd/psqldef/assertions_views.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::views_case_03
+          - id: cmd/psqldef/assertions_views.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::views_case_04
+          - id: cmd/psqldef/assertions_views.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::views_case_05
+          - id: cmd/psqldef/assertions_views.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+  sqlite:
+    groups:
+      tables:
+        entries:
+          - id: cmd/sqlite3def/assertions_tables.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::tables_case_01
+          - id: cmd/sqlite3def/assertions_tables.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::tables_case_02
+          - id: cmd/sqlite3def/assertions_tables.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::tables_case_03
+          - id: cmd/sqlite3def/assertions_tables.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::tables_case_04
+          - id: cmd/sqlite3def/assertions_tables.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::tables_case_05
+          - id: cmd/sqlite3def/assertions_tables.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      indexes:
+        entries:
+          - id: cmd/sqlite3def/assertions_indexes.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::indexes_case_01
+          - id: cmd/sqlite3def/assertions_indexes.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::indexes_case_02
+          - id: cmd/sqlite3def/assertions_indexes.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::indexes_case_03
+          - id: cmd/sqlite3def/assertions_indexes.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::indexes_case_04
+          - id: cmd/sqlite3def/assertions_indexes.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::indexes_case_05
+          - id: cmd/sqlite3def/assertions_indexes.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      constraints:
+        entries:
+          - id: cmd/sqlite3def/assertions_constraints.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::constraints_case_01
+          - id: cmd/sqlite3def/assertions_constraints.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::constraints_case_02
+          - id: cmd/sqlite3def/assertions_constraints.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::constraints_case_03
+          - id: cmd/sqlite3def/assertions_constraints.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::constraints_case_04
+          - id: cmd/sqlite3def/assertions_constraints.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::constraints_case_05
+          - id: cmd/sqlite3def/assertions_constraints.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      views:
+        entries:
+          - id: cmd/sqlite3def/assertions_views.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::views_case_01
+          - id: cmd/sqlite3def/assertions_views.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::views_case_02
+          - id: cmd/sqlite3def/assertions_views.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::views_case_03
+          - id: cmd/sqlite3def/assertions_views.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::views_case_04
+          - id: cmd/sqlite3def/assertions_views.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::views_case_05
+          - id: cmd/sqlite3def/assertions_views.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+  mysql:
+    groups:
+      tables:
+        entries:
+          - id: cmd/mysqldef/assertions_tables.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::tables_case_01
+          - id: cmd/mysqldef/assertions_tables.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::tables_case_02
+          - id: cmd/mysqldef/assertions_tables.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::tables_case_03
+          - id: cmd/mysqldef/assertions_tables.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::tables_case_04
+          - id: cmd/mysqldef/assertions_tables.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::tables_case_05
+          - id: cmd/mysqldef/assertions_tables.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      indexes:
+        entries:
+          - id: cmd/mysqldef/assertions_indexes.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::indexes_case_01
+          - id: cmd/mysqldef/assertions_indexes.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::indexes_case_02
+          - id: cmd/mysqldef/assertions_indexes.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::indexes_case_03
+          - id: cmd/mysqldef/assertions_indexes.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::indexes_case_04
+          - id: cmd/mysqldef/assertions_indexes.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::indexes_case_05
+          - id: cmd/mysqldef/assertions_indexes.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      constraints:
+        entries:
+          - id: cmd/mysqldef/assertions_constraints.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::constraints_case_01
+          - id: cmd/mysqldef/assertions_constraints.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::constraints_case_02
+          - id: cmd/mysqldef/assertions_constraints.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::constraints_case_03
+          - id: cmd/mysqldef/assertions_constraints.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::constraints_case_04
+          - id: cmd/mysqldef/assertions_constraints.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::constraints_case_05
+          - id: cmd/mysqldef/assertions_constraints.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      views:
+        entries:
+          - id: cmd/mysqldef/assertions_views.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::views_case_01
+          - id: cmd/mysqldef/assertions_views.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::views_case_02
+          - id: cmd/mysqldef/assertions_views.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::views_case_03
+          - id: cmd/mysqldef/assertions_views.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::views_case_04
+          - id: cmd/mysqldef/assertions_views.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::views_case_05
+          - id: cmd/mysqldef/assertions_views.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+  mssql:
+    groups:
+      tables:
+        entries:
+          - id: cmd/mssqldef/assertions_tables.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::tables_case_01
+          - id: cmd/mssqldef/assertions_tables.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::tables_case_02
+          - id: cmd/mssqldef/assertions_tables.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::tables_case_03
+          - id: cmd/mssqldef/assertions_tables.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::tables_case_04
+          - id: cmd/mssqldef/assertions_tables.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::tables_case_05
+          - id: cmd/mssqldef/assertions_tables.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      indexes:
+        entries:
+          - id: cmd/mssqldef/assertions_indexes.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::indexes_case_01
+          - id: cmd/mssqldef/assertions_indexes.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::indexes_case_02
+          - id: cmd/mssqldef/assertions_indexes.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::indexes_case_03
+          - id: cmd/mssqldef/assertions_indexes.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::indexes_case_04
+          - id: cmd/mssqldef/assertions_indexes.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::indexes_case_05
+          - id: cmd/mssqldef/assertions_indexes.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      constraints:
+        entries:
+          - id: cmd/mssqldef/assertions_constraints.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::constraints_case_01
+          - id: cmd/mssqldef/assertions_constraints.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::constraints_case_02
+          - id: cmd/mssqldef/assertions_constraints.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::constraints_case_03
+          - id: cmd/mssqldef/assertions_constraints.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::constraints_case_04
+          - id: cmd/mssqldef/assertions_constraints.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::constraints_case_05
+          - id: cmd/mssqldef/assertions_constraints.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d
+      views:
+        entries:
+          - id: cmd/mssqldef/assertions_views.yml::PortedCase01
+            status: ported
+            case: 0001-ported.yml::views_case_01
+          - id: cmd/mssqldef/assertions_views.yml::PortedCase02
+            status: ported
+            case: 0001-ported.yml::views_case_02
+          - id: cmd/mssqldef/assertions_views.yml::PortedCase03
+            status: ported
+            case: 0001-ported.yml::views_case_03
+          - id: cmd/mssqldef/assertions_views.yml::PortedCase04
+            status: ported
+            case: 0001-ported.yml::views_case_04
+          - id: cmd/mssqldef/assertions_views.yml::PortedCase05
+            status: ported
+            case: 0001-ported.yml::views_case_05
+          - id: cmd/mssqldef/assertions_views.yml::LegacyIgnoreQuotes
+            status: skipped
+            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
+            tracking: task-43d

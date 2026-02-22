@@ -1,0 +1,45 @@
+views_case_01:
+  desired: |
+    CREATE TABLE mysql_views_01 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mysql_views_01 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE `mysql_views_01`;
+  enable_drop: true
+
+views_case_02:
+  desired: |
+    CREATE TABLE mysql_views_02 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mysql_views_02 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE `mysql_views_02`;
+  enable_drop: true
+
+views_case_03:
+  desired: |
+    CREATE TABLE mysql_views_03 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mysql_views_03 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE `mysql_views_03`;
+  enable_drop: true
+
+views_case_04:
+  desired: |
+    CREATE TABLE mysql_views_04 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mysql_views_04 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE `mysql_views_04`;
+  enable_drop: true
+
+views_case_05:
+  desired: |
+    CREATE TABLE mysql_views_05 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mysql_views_05 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE `mysql_views_05`;
+  enable_drop: true
+

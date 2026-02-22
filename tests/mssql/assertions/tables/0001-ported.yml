@@ -1,0 +1,45 @@
+tables_case_01:
+  desired: |
+    CREATE TABLE mssql_tables_01 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_tables_01 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_tables_01];
+  enable_drop: true
+
+tables_case_02:
+  desired: |
+    CREATE TABLE mssql_tables_02 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_tables_02 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_tables_02];
+  enable_drop: true
+
+tables_case_03:
+  desired: |
+    CREATE TABLE mssql_tables_03 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_tables_03 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_tables_03];
+  enable_drop: true
+
+tables_case_04:
+  desired: |
+    CREATE TABLE mssql_tables_04 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_tables_04 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_tables_04];
+  enable_drop: true
+
+tables_case_05:
+  desired: |
+    CREATE TABLE mssql_tables_05 (id BIGINT NOT NULL);
+  up: |
+    CREATE TABLE mssql_tables_05 (id BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_tables_05];
+  enable_drop: true
+
