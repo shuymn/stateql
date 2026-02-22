@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For constraint-modification exceptions under `enable_drop=false`, emit matched drop+add pairs from compare logic via a shared constraint-key helper so general suppression/diagnostics flow remains unchanged for truly destructive drops.
 - For `enable_drop` diagnostics, keep current diff emission logic as the source of truth and derive skipped destructive diagnostics by comparing an `enable_drop=true` pass with emitted ops through a centralized `SkippedOpKind` table, so future exceptions (like paired drops) can remain emitted without breaking diagnostics accounting.
 - For `schema_search_path` support in diff matching, keep strict key lookup first and run a dedicated fallback resolver only on misses so qualified/unqualified matching stays deterministic (first search-path schema wins) without interfering with rename resolution.
 - For rename-aware diffing, keep strict name matching as the default path and run `resolve_rename_match(...)` only for unmatched desired objects so annotated renames emit `Rename*` ops without reintroducing drop/create churn.
@@ -322,4 +323,17 @@
 - **Learnings:**
   - Patterns discovered: A two-pass diff (`enable_drop=false` emitted ops plus `enable_drop=true` reference ops) lets diagnostics capture suppressed destructive operations without changing existing compare-path behavior.
   - Gotchas encountered: `Privilege` in current IR uses `operations: Vec<PrivilegeOp>` and `on`/`with_grant_option` fields, so suppression tests for `Revoke` must construct that exact shape.
+---
+## 2026-02-22 - task-19: Implement Constraint Modification Pairing
+- What was implemented: Added a dedicated constraint-pairing helper module and integrated it into check-constraint diffing so named CHECK constraint body changes emit `DropCheck + AddCheck` as a pair even when `enable_drop=false`, while unpaired destructive drops remain suppressed.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare.rs`, `crates/core/src/diff/constraint_pairing.rs`, `crates/core/tests/constraint_pairing_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test constraint_pairing_test`: PASS (2 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (66 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keeping pairing logic in a small key-matching helper avoids scattering special-case `enable_drop` exceptions across compare code paths.
+  - Gotchas encountered: The existing compare path only pairs named CHECK constraints today; unnamed fallback pairing from the design note will require broader constraint matching when unnamed CHECK diff support is expanded.
 ---
