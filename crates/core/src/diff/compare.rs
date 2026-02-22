@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use super::compare_remaining::{compare_remaining_objects, validate_sequence_invariant};
 use crate::{
     CheckConstraint, Column, ColumnChange, DataType, DiffConfig, DiffError, DiffOp, Ident,
     IndexDef, IndexOwner, QualifiedName, Result, SchemaObject, Table, custom_types_equivalent,
@@ -31,6 +32,9 @@ impl DiffEngine {
         current: &[SchemaObject],
         config: &DiffConfig,
     ) -> Result<Vec<DiffOp>> {
+        validate_sequence_invariant(desired, "desired")?;
+        validate_sequence_invariant(current, "current")?;
+
         let desired_objects = ObjectBuckets::from_schema(desired)?;
         let current_objects = ObjectBuckets::from_schema(current)?;
 
@@ -45,6 +49,7 @@ impl DiffEngine {
             config,
             &mut ops,
         )?;
+        compare_remaining_objects(desired, current, config, &mut ops)?;
         Ok(ops)
     }
 
@@ -409,10 +414,19 @@ impl<'a> ObjectBuckets<'a> {
                 SchemaObject::Index(index) => {
                     indexes.push(index);
                 }
-                _ => {
+                SchemaObject::Sequence(_)
+                | SchemaObject::Trigger(_)
+                | SchemaObject::Function(_)
+                | SchemaObject::Type(_)
+                | SchemaObject::Domain(_)
+                | SchemaObject::Extension(_)
+                | SchemaObject::Schema(_)
+                | SchemaObject::Comment(_)
+                | SchemaObject::Policy(_) => {}
+                SchemaObject::Privilege(_) => {
                     return Err(DiffError::ObjectComparison {
                         target: schema_object_kind(object).to_string(),
-                        operation: "baseline comparison does not support this object kind yet"
+                        operation: "diff comparison does not support this object kind yet"
                             .to_string(),
                     }
                     .into());
