@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For view rebuild closure, derive changed-view dependents from the current schema graph and emit `DropView` in reverse topological order plus `CreateView` in desired topological order, so unchanged dependent views are rebuilt deterministically.
 - For privilege diff semantics, match entries by `(on, grantee)` and compute operation deltas through a canonical helper (`diff_privilege_ops`) so list ordering/duplicates do not affect emitted minimal `Grant/Revoke` changes.
 - For constraint-modification exceptions under `enable_drop=false`, emit matched drop+add pairs from compare logic via a shared constraint-key helper so general suppression/diagnostics flow remains unchanged for truly destructive drops.
 - For `enable_drop` diagnostics, keep current diff emission logic as the source of truth and derive skipped destructive diagnostics by comparing an `enable_drop=true` pass with emitted ops through a centralized `SkippedOpKind` table, so future exceptions (like paired drops) can remain emitted without breaking diagnostics accounting.
@@ -349,4 +350,17 @@
 - **Learnings:**
   - Patterns discovered: Keep privilege-op comparison isolated in a canonical set helper so emit logic can separately compose operation diffs and grant-option-only diffs without depending on input ordering.
   - Gotchas encountered: For `with_grant_option` downgrade, shared operations must emit `Revoke` with `with_grant_option=true` (grant-option revoke semantics) while removed operations should still revoke the privilege itself (`with_grant_option=false`).
+---
+## 2026-02-22 - task-21: Implement View Rebuild Closure Expansion
+- What was implemented: Added dependent-view rebuild closure expansion for changed views, including transitive dependency traversal and deterministic drop/create ordering; refactored view dependency graph construction into a dedicated `diff/view_rebuild.rs` module and wired view diff comparison to use it.
+- Files changed: `crates/core/src/diff.rs`, `crates/core/src/diff/compare_remaining.rs`, `crates/core/src/diff/view_rebuild.rs`, `crates/core/tests/view_rebuild_scope_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test view_rebuild_scope_test`: PASS (2 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (72 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Keep view rebuild planning as a dedicated closure planner that consumes current/desired view graphs and returns ordered keys, so compare logic stays focused on op emission.
+  - Gotchas encountered: Dependency extraction from raw view SQL must resolve unqualified relation names using the source view schema first; otherwise unchanged dependents can be missed when names are schema-qualified in IR.
 ---
