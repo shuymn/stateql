@@ -1,6 +1,6 @@
 use std::{error::Error as StdError, io::ErrorKind};
 
-use crate::{DatabaseAdapter, ExecutionError, Result, Statement};
+use crate::{DatabaseAdapter, ExecutionError, Result, Statement, Transaction};
 
 pub struct Executor<'a> {
     adapter: &'a mut dyn DatabaseAdapter,
@@ -31,12 +31,7 @@ impl<'a> Executor<'a> {
                 sql,
                 transactional: false,
                 ..
-            } => Err(unsupported_statement_error(
-                start,
-                sql.clone(),
-                "non-transactional statements are not supported yet",
-            )
-            .into()),
+            } => self.execute_non_transactional_statement(start, sql),
             Statement::BatchBoundary => Err(unsupported_statement_error(
                 start,
                 "<batch-boundary>".to_string(),
@@ -51,7 +46,7 @@ impl<'a> Executor<'a> {
         statements: &[Statement],
         start: usize,
     ) -> Result<usize> {
-        let mut tx = self.adapter.begin()?;
+        let mut tx = Some(self.adapter.begin()?);
         let mut cursor = start;
 
         while let Some(statement) = statements.get(cursor) {
@@ -61,7 +56,9 @@ impl<'a> Executor<'a> {
                     transactional: true,
                     ..
                 } => {
-                    tx.execute(sql)?;
+                    if let Some(transaction) = tx.as_mut() {
+                        transaction.execute(sql)?;
+                    }
                     cursor += 1;
                 }
                 Statement::Sql {
@@ -72,8 +69,21 @@ impl<'a> Executor<'a> {
             }
         }
 
-        tx.commit()?;
+        Self::flush_tx_if_open(tx)?;
         Ok(cursor)
+    }
+
+    fn execute_non_transactional_statement(&mut self, start: usize, sql: &str) -> Result<usize> {
+        self.adapter.execute(sql)?;
+        Ok(start + 1)
+    }
+
+    fn flush_tx_if_open(transaction: Option<Transaction<'_>>) -> Result<()> {
+        if let Some(transaction) = transaction {
+            transaction.commit()?;
+        }
+
+        Ok(())
     }
 }
 
