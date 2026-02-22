@@ -8,6 +8,7 @@ mod executor;
 mod ir;
 mod ordering;
 mod plan;
+mod renderer;
 mod statement;
 
 pub use adapter::{DatabaseAdapter, Transaction};
@@ -41,4 +42,5 @@ pub use ir::{
     extra_keys, float_total_cmp, value_total_eq,
 };
 pub use plan::{DdlPlan, DdlPlanner, build_ddl_plan, sort_diff_ops};
+pub use renderer::Renderer;
 pub use statement::{SqliteRebuildStep, Statement, StatementContext};
