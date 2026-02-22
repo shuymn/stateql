@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For export idempotency checks, keep the orchestrator’s export pipeline as a reusable helper (`export_sql_from_input`) plus a comparison helper (`export_roundtrip_matches`) so round-trip verification logic stays aligned with runtime export rendering.
 - For orchestrator export mode, branch on `Mode` before diff generation and keep `--export` on a dedicated `export_schema -> parse -> normalize -> to_sql` path so desired SQL parsing and diff/executor paths are never touched.
 - For orchestrator dry-run wiring, keep `DiffEngine::diff_with_diagnostics(...)` as the single diff entrypoint and convert `DiffDiagnostics.skipped_ops` into renderer comment lines (`-- Skipped: <kind>`) before appending statement rendering so suppression visibility stays consistent.
 - For dry-run statement rendering, keep `Renderer` as the single statement-to-text boundary: emit each SQL statement with a trailing newline, map `Statement::BatchBoundary` through `Dialect::batch_separator()`, and normalize separator newlines so dialects can return either `GO` or `GO\n` safely.
@@ -510,4 +511,20 @@
 - **Learnings:**
   - Patterns discovered: Export behavior is easiest to keep correct by sharing only `parse_and_normalize` with other modes and isolating all mode-specific work behind a single `match`.
   - Gotchas encountered: To make `to_sql` invocation testable without coupling to output text conventions, the shared fake dialect needs explicit `to_sql` call recording in its internal state.
+---
+## 2026-02-22 - task-30b: Verify `--export` Round-Trip Idempotency
+- What was implemented: Added round-trip idempotency coverage for export mode with a new `orchestrator_export_roundtrip_test`, introduced an orchestrator helper (`export_roundtrip_matches`) that re-renders exported SQL through `parse -> normalize -> to_sql` for equality checks, and refactored export fixtures into a shared support module used by both export test files.
+- Files changed: `crates/core/src/orchestrator.rs`, `crates/core/tests/orchestrator_export_test.rs`, `crates/core/tests/orchestrator_export_roundtrip_test.rs`, `crates/core/tests/support/orchestrator_export_fixture.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test orchestrator_export_roundtrip_test`: PASS (2 passed, 0 failed).
+  - `cargo nextest run -p stateql-core --test orchestrator_export_test --test orchestrator_export_roundtrip_test`: PASS (3 passed, 0 failed).
+  - 2-pass export invariant (`first_export == second_export`) verified in `export_is_idempotent_across_two_passes`: PASS.
+  - Task note recorded: dialect-specific round-trip deltas remain covered by dialect tasks (`task-33a/33b/33c/34b/34c/34d`) and their adapter tests.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (96 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: Shared integration-test fixtures in `crates/core/tests/support/` avoid drift between behavior tests and contract tests when export paths evolve.
+  - Gotchas encountered: In round-trip tests using a fixture dialect, the second pass must register a parse fixture for the first export text, otherwise the parse stage fails before idempotency can be checked.
 ---
