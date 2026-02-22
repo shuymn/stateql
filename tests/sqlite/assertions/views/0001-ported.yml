@@ -43,3 +43,12 @@ views_case_05:
     DROP TABLE "sqlite_views_05";
   enable_drop: true
 
+
+views_case_06_quote_aware:
+  desired: |
+    CREATE TABLE "sqlite_views_quote_aware_06" ("QuotedId" BIGINT NOT NULL);
+  up: |
+    CREATE TABLE "sqlite_views_quote_aware_06" ("QuotedId" BIGINT NOT NULL);
+  down: |
+    DROP TABLE "sqlite_views_quote_aware_06";
+  enable_drop: true

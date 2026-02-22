@@ -43,3 +43,12 @@ constraints_case_05:
     DROP TABLE `mysql_constraints_05`;
   enable_drop: true
 
+
+constraints_case_06_quote_aware:
+  desired: |
+    CREATE TABLE `mysql_constraints_quote_aware_06` (`QuotedId` BIGINT NOT NULL);
+  up: |
+    CREATE TABLE `mysql_constraints_quote_aware_06` (`QuotedId` BIGINT NOT NULL);
+  down: |
+    DROP TABLE `mysql_constraints_quote_aware_06`;
+  enable_drop: true

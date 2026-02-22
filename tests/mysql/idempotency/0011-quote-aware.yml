@@ -1,0 +1,6 @@
+quote_aware_case_26:
+  desired: |
+    CREATE TABLE `MysqlQuoteAware26` (
+      `QuotedId` BIGINT NOT NULL,
+      `QuotedName` varchar(100)
+    );

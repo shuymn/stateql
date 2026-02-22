@@ -43,3 +43,12 @@ constraints_case_05:
     DROP TABLE [mssql_constraints_05];
   enable_drop: true
 
+
+constraints_case_06_quote_aware:
+  desired: |
+    CREATE TABLE [mssql_constraints_quote_aware_06] ([QuotedId] BIGINT NOT NULL);
+  up: |
+    CREATE TABLE [mssql_constraints_quote_aware_06] ([QuotedId] BIGINT NOT NULL);
+  down: |
+    DROP TABLE [mssql_constraints_quote_aware_06];
+  enable_drop: true

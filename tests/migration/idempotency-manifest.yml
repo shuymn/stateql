@@ -93,9 +93,8 @@ dialects:
         reason: Destructive-op assertion migration is handled in task-43c.
         tracking: task-43c
       - id: cmd/psqldef/tests_preserve_quotes.yml::LegacyIgnoreQuotes
-        status: skipped
-        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
-        tracking: task-43d
+        status: ported
+        case: 0011-quote-aware.yml::quote_aware_case_26
 
   sqlite:
     entries:
@@ -187,9 +186,8 @@ dialects:
         reason: Destructive-op assertion migration is handled in task-43c.
         tracking: task-43c
       - id: cmd/sqlite3def/tests_preserve_quotes.yml::LegacyIgnoreQuotes
-        status: skipped
-        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
-        tracking: task-43d
+        status: ported
+        case: 0011-quote-aware.yml::quote_aware_case_26
       - id: cmd/sqlite3def/tests.yml::RenameColumnWithTypeChange
         status: skipped
         reason: Rename assertion migration is handled in task-43c.
@@ -289,9 +287,8 @@ dialects:
         reason: Destructive-op assertion migration is handled in task-43c.
         tracking: task-43c
       - id: cmd/mysqldef/tests_preserve_quotes.yml::LegacyIgnoreQuotes
-        status: skipped
-        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
-        tracking: task-43d
+        status: ported
+        case: 0011-quote-aware.yml::quote_aware_case_26
 
   mssql:
     entries:
@@ -383,9 +380,8 @@ dialects:
         reason: Destructive-op assertion migration is handled in task-43c.
         tracking: task-43c
       - id: cmd/mssqldef/tests_preserve_quotes.yml::LegacyIgnoreQuotes
-        status: skipped
-        reason: legacy_ignore_quotes dependent rewrite is handled in task-43d.
-        tracking: task-43d
+        status: ported
+        case: 0011-quote-aware.yml::quote_aware_case_26
       - id: cmd/mssqldef/tests.yml::RenameTable
         status: skipped
         reason: Rename assertion migration is handled in task-43c.

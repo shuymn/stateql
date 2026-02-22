@@ -638,7 +638,7 @@ fn assert_expected_sql(
     };
 
     let actual = Renderer::new(dialect).render(statements);
-    if normalize_sql(expected) == normalize_sql(&actual) {
+    if sql_matches_quote_aware(expected, &actual) {
         return Ok(());
     }
 
@@ -648,7 +648,12 @@ fn assert_expected_sql(
     )))
 }
 
-fn normalize_sql(sql: &str) -> String {
+pub fn sql_matches_quote_aware(expected: &str, actual: &str) -> bool {
+    normalize_sql_for_quote_aware_comparison(expected)
+        == normalize_sql_for_quote_aware_comparison(actual)
+}
+
+pub fn normalize_sql_for_quote_aware_comparison(sql: &str) -> String {
     sql.replace('\r', "")
         .split(';')
         .map(collapse_sql_whitespace)

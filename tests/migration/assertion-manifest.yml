@@ -19,9 +19,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::tables_case_05
           - id: cmd/psqldef/assertions_tables.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::tables_case_06_quote_aware
       indexes:
         entries:
           - id: cmd/psqldef/assertions_indexes.yml::PortedCase01
@@ -40,9 +39,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::indexes_case_05
           - id: cmd/psqldef/assertions_indexes.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::indexes_case_06_quote_aware
       constraints:
         entries:
           - id: cmd/psqldef/assertions_constraints.yml::PortedCase01
@@ -61,9 +59,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::constraints_case_05
           - id: cmd/psqldef/assertions_constraints.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::constraints_case_06_quote_aware
       views:
         entries:
           - id: cmd/psqldef/assertions_views.yml::PortedCase01
@@ -82,9 +79,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::views_case_05
           - id: cmd/psqldef/assertions_views.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::views_case_06_quote_aware
   sqlite:
     groups:
       tables:
@@ -105,9 +101,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::tables_case_05
           - id: cmd/sqlite3def/assertions_tables.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::tables_case_06_quote_aware
       indexes:
         entries:
           - id: cmd/sqlite3def/assertions_indexes.yml::PortedCase01
@@ -126,9 +121,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::indexes_case_05
           - id: cmd/sqlite3def/assertions_indexes.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::indexes_case_06_quote_aware
       constraints:
         entries:
           - id: cmd/sqlite3def/assertions_constraints.yml::PortedCase01
@@ -147,9 +141,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::constraints_case_05
           - id: cmd/sqlite3def/assertions_constraints.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::constraints_case_06_quote_aware
       views:
         entries:
           - id: cmd/sqlite3def/assertions_views.yml::PortedCase01
@@ -168,9 +161,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::views_case_05
           - id: cmd/sqlite3def/assertions_views.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::views_case_06_quote_aware
   mysql:
     groups:
       tables:
@@ -191,9 +183,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::tables_case_05
           - id: cmd/mysqldef/assertions_tables.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::tables_case_06_quote_aware
       indexes:
         entries:
           - id: cmd/mysqldef/assertions_indexes.yml::PortedCase01
@@ -212,9 +203,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::indexes_case_05
           - id: cmd/mysqldef/assertions_indexes.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::indexes_case_06_quote_aware
       constraints:
         entries:
           - id: cmd/mysqldef/assertions_constraints.yml::PortedCase01
@@ -233,9 +223,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::constraints_case_05
           - id: cmd/mysqldef/assertions_constraints.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::constraints_case_06_quote_aware
       views:
         entries:
           - id: cmd/mysqldef/assertions_views.yml::PortedCase01
@@ -254,9 +243,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::views_case_05
           - id: cmd/mysqldef/assertions_views.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::views_case_06_quote_aware
   mssql:
     groups:
       tables:
@@ -277,9 +265,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::tables_case_05
           - id: cmd/mssqldef/assertions_tables.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::tables_case_06_quote_aware
       indexes:
         entries:
           - id: cmd/mssqldef/assertions_indexes.yml::PortedCase01
@@ -298,9 +285,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::indexes_case_05
           - id: cmd/mssqldef/assertions_indexes.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::indexes_case_06_quote_aware
       constraints:
         entries:
           - id: cmd/mssqldef/assertions_constraints.yml::PortedCase01
@@ -319,9 +305,8 @@ dialects:
             status: ported
             case: 0001-ported.yml::constraints_case_05
           - id: cmd/mssqldef/assertions_constraints.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::constraints_case_06_quote_aware
       views:
         entries:
           - id: cmd/mssqldef/assertions_views.yml::PortedCase01
@@ -340,6 +325,5 @@ dialects:
             status: ported
             case: 0001-ported.yml::views_case_05
           - id: cmd/mssqldef/assertions_views.yml::LegacyIgnoreQuotes
-            status: skipped
-            reason: legacy_ignore_quotes dependent assertion rewrite is handled in task-43d.
-            tracking: task-43d
+            status: ported
+            case: 0001-ported.yml::views_case_06_quote_aware

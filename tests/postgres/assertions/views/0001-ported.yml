@@ -43,3 +43,12 @@ views_case_05:
     DROP TABLE "postgres_views_05";
   enable_drop: true
 
+
+views_case_06_quote_aware:
+  desired: |
+    CREATE TABLE "postgres_views_quote_aware_06" ("QuotedId" bigint NOT NULL);
+  up: |
+    CREATE TABLE "postgres_views_quote_aware_06" ("QuotedId" bigint);
+  down: |
+    DROP TABLE "postgres_views_quote_aware_06";
+  enable_drop: true
