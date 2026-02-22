@@ -15,3 +15,10 @@ edition = "2024"
 rust-version = "1.89"
 license = "MIT"
 repository = "https://github.com/shuymn/stateql"
+
+[workspace.dependencies]
+stateql-core = { path = "crates/core" }
+stateql-dialect-postgres = { path = "crates/dialect-postgres" }
+stateql-dialect-mysql = { path = "crates/dialect-mysql" }
+stateql-dialect-sqlite = { path = "crates/dialect-sqlite" }
+stateql-dialect-mssql = { path = "crates/dialect-mssql" }

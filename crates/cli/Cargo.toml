@@ -10,9 +10,16 @@ repository.workspace = true
 name = "stateql"
 path = "src/main.rs"
 
+[features]
+default = ["mysql", "postgres", "sqlite"]
+mysql = ["dep:stateql-dialect-mysql"]
+postgres = ["dep:stateql-dialect-postgres"]
+sqlite = ["dep:stateql-dialect-sqlite"]
+mssql = ["dep:stateql-dialect-mssql"]
+
 [dependencies]
-stateql-core = { path = "../core" }
-stateql-dialect-postgres = { path = "../dialect-postgres" }
-stateql-dialect-mysql = { path = "../dialect-mysql" }
-stateql-dialect-sqlite = { path = "../dialect-sqlite" }
-stateql-dialect-mssql = { path = "../dialect-mssql" }
+stateql-core.workspace = true
+stateql-dialect-postgres = { workspace = true, optional = true }
+stateql-dialect-mysql = { workspace = true, optional = true }
+stateql-dialect-sqlite = { workspace = true, optional = true }
+stateql-dialect-mssql = { workspace = true, optional = true }
