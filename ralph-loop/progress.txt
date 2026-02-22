@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For dialect-specific `Column.extra` metadata, define key constants in core (`stateql_core::extra_keys::<dialect>::*`) and consume those constants in fixtures/tests to prevent parser/generator key drift before dialect implementations land.
 - For wide contract enums under workspace `-D warnings`, pair an exhaustive variant-tag `match` helper with an `all_*_variants()` fixture list; this catches new-variant drift at compile time, and if `clippy::large_enum_variant` fires, box only the largest payload field instead of suppressing the lint.
 - For fail-fast rename annotation attachment, first resolve every line->target binding into immutable operations, then mutate IR objects in a second pass so orphan annotations cannot partially set `renamed_from`.
 - For comment-driven SQL metadata (for example `@renamed`), run a quote-aware line-comment scan and strip only the matched annotation token so cleaned SQL keeps original line boundaries for parser error mapping.
@@ -198,4 +199,20 @@
 - **Learnings:**
   - Patterns discovered: Exhaustive variant-tag helpers in test fixtures are an effective compile-time guard against enum-surface drift while keeping runtime assertions straightforward.
   - Gotchas encountered: Expanding `DiffOp` triggered `clippy::large_enum_variant`; boxing only the largest payload field (`AddColumn.column`) resolved it without lint suppression.
+---
+
+## 2026-02-22 - task-13b: Add IR Validation Tests for Dialect-Specific Patterns
+- What was implemented: Added dedicated IR/DiffOp representability coverage for MySQL/MSSQL dialect patterns (`CHANGE COLUMN` full redefinition, `AFTER` positioning, MSSQL named DEFAULT constraints, rename ops, MySQL `AUTO_INCREMENT` metadata), introduced reusable test fixtures, added core `extra_keys` constants, and added `is_mysql_change_column_full_redefinition(...)` helper for change-set validation.
+- Files changed: `crates/core/tests/ir_dialect_pattern_validation_test.rs`, `crates/core/tests/support/ir_pattern_fixtures.rs`, `crates/core/src/ir.rs`, `crates/core/src/diff/types.rs`, `crates/core/src/diff.rs`, `crates/core/src/lib.rs`, `crates/core/tests/support/diffop_fixtures.rs`, `crates/core/tests/schema_object_part1_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test ir_dialect_pattern_validation_test`: PASS (5 passed, 0 failed).
+  - CI required-set gate: PASS (`ir_dialect_pattern_validation_test` is under `crates/core/tests/`, and `.github/workflows/ci.yml` test job runs `cargo test --all-features`, so this task gate is part of required CI).
+  - `cargo nextest run -p stateql-core`: PASS (34 passed, 0 failed).
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (34 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: For representability gates that precede parser implementation, use construction-only tests against public IR/DiffOp exports and keep reusable constructors in `crates/core/tests/support/*` so later dialect crates can import the same fixtures.
+  - Gotchas encountered: If constants are introduced only in private modules, integration tests cannot consume them from `stateql_core`; they must be re-exported from `lib.rs` to keep constant usage consistent across crate boundaries.
 ---
