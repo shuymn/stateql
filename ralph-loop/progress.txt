@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- For multi-phase IR growth, add new object-family structs/enums in one module pass and update both `ir.rs` and `lib.rs` re-exports in the same change so downstream crate imports never drift during task boundaries.
 - For staged IR expansion, move growing object families into `src/ir/<domain>.rs` and switch enum variants to typed payload structs in one change, then immediately update cross-crate fixture constructors to keep workspace-wide tests green.
 - For recursive IR expression trees, keep payload recursion explicit with `Box<Expr>` and isolate shared query/window payloads (`SubQuery`, `WindowSpec`) in a dedicated `ir/expr.rs` module, then re-export through `ir.rs` and `lib.rs` to stabilize downstream imports.
 - For IR enums that must keep `Value::Float(f64)`, use `PartialEq` for the base type and provide a dedicated `f64::total_cmp`-based helper (for Eq-like paths) instead of introducing `ordered-float`.
@@ -120,4 +121,19 @@
 - **Learnings:**
   - Patterns discovered: When promoting placeholder enum variants to typed payload structs, keep constructor helpers (`Table::named`, `View::new`) in the same module so downstream fixtures can migrate with minimal noise.
   - Gotchas encountered: Legacy fixtures in non-core crates (`testkit`) can still rely on old variant constructor shape even if core unit tests pass; include a workspace-wide run before marking the task done.
+---
+
+## 2026-02-22 - task-9: Add Full `SchemaObject` Family (Part 2)
+- What was implemented: Expanded `SchemaObject` to the full part-2 family (`Trigger`, `Function`, `Type`, `Domain`, `Extension`, `Schema`, `Comment`, `Privilege`, `Policy`), added all plan-required support types (`CheckConstraint`, `ExclusionConstraint`, `ExclusionElement`, `Deferrable`, `SortOrder`, `NullsOrder`, `ForeignKey`, `ForeignKeyAction`, `CheckOption`, `ViewSecurity`, `TriggerTiming`, `TriggerEvent`, `TriggerForEach`, `FunctionParam`, `FunctionParamMode`, `Volatility`, `FunctionSecurity`, `PrivilegeOp`, `PrivilegeObject`, `PolicyCommand`, `TypeKind`, `EnumValuePosition`, `CommentTarget`), added `Privilege::empty`, and aligned existing IR structs (`Table`, `View`, `MaterializedView`) plus crate re-exports to the expanded contract.
+- Files changed: `crates/core/src/ir.rs`, `crates/core/src/ir/schema_object.rs`, `crates/core/src/lib.rs`, `crates/core/tests/schema_object_part1_test.rs`, `crates/core/tests/schema_object_part2_test.rs`, `ralph-loop/.commit-msg`, `ralph-loop/prd.json`, `ralph-loop/progress.txt`.
+- DoD verification results:
+  - `cargo nextest run -p stateql-core --test schema_object_part2_test`: PASS (2 passed, 0 failed).
+  - `cargo check -p stateql-dialect-postgres -p stateql-dialect-mysql -p stateql-dialect-sqlite -p stateql-dialect-mssql`: PASS.
+  - Quality gates:
+    - `cargo +nightly-2026-02-20 fmt --all`: PASS.
+    - `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+    - `cargo nextest run --workspace`: PASS (21 passed, 0 failed).
+- **Learnings:**
+  - Patterns discovered: When adding large IR type families, constructor-focused integration tests (`schema_object_part*_test`) catch re-export and struct-shape regressions earlier than downstream crate checks.
+  - Gotchas encountered: Workspace-wide clippy flags even test-only style nits (`redundant_pattern_matching`), so the quality-gate run should happen before updating tracking artifacts.
 ---
