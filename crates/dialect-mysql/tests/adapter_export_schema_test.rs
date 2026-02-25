@@ -4,12 +4,13 @@ use stateql_core::{ConnectionConfig, Dialect};
 use stateql_dialect_mysql::{MysqlDialect, lower_case_table_names_query, table_names_query};
 
 #[test]
-fn export_queries_keep_view_filter_and_lower_case_variable_probe() {
+fn export_queries_keep_view_filter_without_order_by_and_lower_case_variable_probe() {
     let table_names = table_names_query();
     let lower_case_variable = lower_case_table_names_query();
 
     assert!(table_names.contains("SHOW FULL TABLES"));
     assert!(table_names.contains("Table_Type != 'VIEW'"));
+    assert!(!table_names.to_ascii_uppercase().contains("ORDER BY"));
     assert!(lower_case_variable.contains("lower_case_table_names"));
 }
 

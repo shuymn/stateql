@@ -156,9 +156,12 @@ fn query_table_names(connection: &mut PooledConn) -> Result<Vec<String>> {
     let rows = connection
         .query::<Row, _>(query)
         .map_err(|source| execution_error(query, source))?;
-    rows.iter()
+    let mut table_names = rows
+        .iter()
         .map(|row| row_string(row, 0, query, "table_name"))
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+    table_names.sort_unstable();
+    Ok(table_names)
 }
 
 fn export_table_ddl(connection: &mut PooledConn, table_name: &str) -> Result<String> {

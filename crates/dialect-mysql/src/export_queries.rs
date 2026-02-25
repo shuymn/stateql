@@ -1,5 +1,6 @@
 // Ported from reference/sqldef/database/mysql/database.go.
-// stateql adds explicit ORDER BY clauses for deterministic export output.
+// `SHOW FULL TABLES ... WHERE ...` does not support ORDER BY on some
+// MySQL-compatible implementations, so ordering is handled client-side.
 
 pub(crate) const SHOW_SERVER_VERSION_QUERY: &str = "SELECT VERSION()";
 pub(crate) const LOWER_CASE_TABLE_NAMES_QUERY: &str =
@@ -7,7 +8,7 @@ pub(crate) const LOWER_CASE_TABLE_NAMES_QUERY: &str =
 pub(crate) const TABLE_NAMES_QUERY: &str = r#"
 SHOW FULL TABLES
 WHERE Table_Type != 'VIEW'
-ORDER BY 1;
+;
 "#;
 
 pub(crate) const VIEWS_QUERY: &str = r#"
