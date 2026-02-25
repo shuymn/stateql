@@ -1,4 +1,4 @@
-use stateql_core::{Dialect, DiffError, Error, Ident, ParseError, SchemaObject};
+use stateql_core::{Dialect, DiffError, Error, Ident, ParseError, SchemaObject, ViewSecurity};
 use stateql_dialect_mysql::MysqlDialect;
 
 #[test]
@@ -59,4 +59,38 @@ fn orphan_renamed_annotation_fails_fast() {
         }
         other => panic!("expected orphan annotation mismatch, got {other:?}"),
     }
+}
+
+#[test]
+fn create_sql_security_view_is_supported() {
+    let dialect = MysqlDialect;
+    let sql = "CREATE SQL SECURITY DEFINER VIEW `masked_entities_view` AS select `sample_schema`.`sample_entities`.`member_id` AS `member_id` from `sample_schema`.`sample_entities`;";
+
+    let objects = dialect.parse(sql).expect("mysql parse pipeline");
+
+    assert_eq!(objects.len(), 1);
+    let SchemaObject::View(view) = &objects[0] else {
+        panic!("expected view object");
+    };
+    assert_eq!(view.name.name, Ident::quoted("masked_entities_view"));
+    assert_eq!(view.security, Some(ViewSecurity::Definer));
+    assert!(view.query.contains("sample_schema"));
+}
+
+#[test]
+fn trailing_renamed_annotation_is_attached_to_view() {
+    let dialect = MysqlDialect;
+    let sql =
+        "CREATE VIEW users_view AS SELECT id FROM users; -- @renamed from=legacy_users_view\n";
+
+    let objects = dialect.parse(sql).expect("mysql parse pipeline");
+
+    assert_eq!(objects.len(), 1);
+    let SchemaObject::View(view) = &objects[0] else {
+        panic!("expected view object");
+    };
+    assert_eq!(
+        view.renamed_from,
+        Some(Ident::unquoted("legacy_users_view"))
+    );
 }

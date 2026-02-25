@@ -1,9 +1,13 @@
 use std::io;
 
-use sqlparser::{dialect::MySqlDialect, parser::Parser};
+use sqlparser::{
+    ast::{CreateView, CreateViewSecurity, ObjectName, Statement},
+    dialect::MySqlDialect,
+    parser::Parser,
+};
 use stateql_core::{
     AnnotationAttachment, AnnotationExtractor, AnnotationTarget, Ident, ParseError, QualifiedName,
-    Result, SchemaObject, SourceLocation, Table, Value, attach_annotations,
+    Result, SchemaObject, SourceLocation, Table, Value, View, ViewSecurity, attach_annotations,
 };
 
 use crate::extra_keys;
@@ -228,7 +232,7 @@ fn split_statement_spans(sql: &str) -> Vec<(usize, usize)> {
     spans
 }
 
-fn fallback_metadata(statement: &sqlparser::ast::Statement) -> StatementMetadata {
+fn fallback_metadata(statement: &Statement) -> StatementMetadata {
     StatementMetadata {
         source_sql: statement.to_string(),
         source_location: Some(SourceLocation {
@@ -259,30 +263,80 @@ fn offset_to_line(sql: &str, offset: usize) -> usize {
     line
 }
 
-fn convert_statement(
-    statement: &sqlparser::ast::Statement,
-    line: usize,
-) -> ConversionResult<ConvertedStatement> {
+fn convert_statement(statement: &Statement, line: usize) -> ConversionResult<ConvertedStatement> {
     let statement_sql = statement.to_string();
-    let table_name = parse_create_table_name(&statement_sql).ok_or_else(|| {
-        conversion_error(format!(
+    match statement {
+        Statement::CreateTable(_) => convert_create_table_statement(&statement_sql, line),
+        Statement::CreateView(create_view) => convert_create_view_statement(create_view, line),
+        _ => Err(conversion_error(format!(
             "unsupported mysql statement kind: {}",
             statement_kind(&statement_sql)
-        ))
-    })?;
+        ))),
+    }
+}
 
+fn convert_create_table_statement(
+    statement_sql: &str,
+    line: usize,
+) -> ConversionResult<ConvertedStatement> {
+    let table_name = parse_create_table_name(statement_sql)
+        .ok_or_else(|| conversion_error("failed to parse CREATE TABLE name"))?;
     let mut table = Table::named(table_name.name.value.as_str());
     table.name = table_name.clone();
-    apply_preconversion_hints(&statement_sql, &mut table);
-
-    let attachment = AnnotationAttachment {
-        line,
-        target: AnnotationTarget::Table(table_name),
-    };
+    apply_preconversion_hints(statement_sql, &mut table);
 
     Ok(ConvertedStatement {
         object: SchemaObject::Table(table),
-        attachment,
+        attachment: AnnotationAttachment {
+            line,
+            target: AnnotationTarget::Table(table_name),
+        },
+    })
+}
+
+fn convert_create_view_statement(
+    create_view: &CreateView,
+    line: usize,
+) -> ConversionResult<ConvertedStatement> {
+    if create_view.materialized || create_view.secure || create_view.temporary {
+        return Err(conversion_error(
+            "unsupported CREATE VIEW variant: materialized/secure/temporary",
+        ));
+    }
+    if create_view.to.is_some() || create_view.with_no_schema_binding {
+        return Err(conversion_error(
+            "unsupported CREATE VIEW clause: TO or WITH NO SCHEMA BINDING",
+        ));
+    }
+    if create_view
+        .params
+        .as_ref()
+        .is_some_and(|params| params.algorithm.is_some() || params.definer.is_some())
+    {
+        return Err(conversion_error(
+            "unsupported CREATE VIEW parameters: ALGORITHM/DEFINER",
+        ));
+    }
+
+    let name = parse_object_name(&create_view.name)?;
+    let mut view = View::new(name.clone(), create_view.query.to_string());
+    view.columns = create_view
+        .columns
+        .iter()
+        .map(|column| parse_sqlparser_ident(&column.name))
+        .collect();
+    view.security = create_view
+        .params
+        .as_ref()
+        .and_then(|params| params.security.as_ref())
+        .map(parse_view_security);
+
+    Ok(ConvertedStatement {
+        object: SchemaObject::View(view),
+        attachment: AnnotationAttachment {
+            line,
+            target: AnnotationTarget::View(name),
+        },
     })
 }
 
@@ -386,6 +440,55 @@ fn parse_create_table_name(statement_sql: &str) -> Option<QualifiedName> {
     }
 
     parse_qualified_name_token(tokens.get(cursor)?)
+}
+
+fn parse_object_name(name: &ObjectName) -> ConversionResult<QualifiedName> {
+    if name.0.is_empty() || name.0.len() > 2 {
+        return Err(conversion_error(format!(
+            "unsupported qualified name in CREATE VIEW: {}",
+            name
+        )));
+    }
+
+    let identifiers = name
+        .0
+        .iter()
+        .map(|part| {
+            part.as_ident().ok_or_else(|| {
+                conversion_error(format!(
+                    "unsupported object name part in CREATE VIEW: {}",
+                    part
+                ))
+            })
+        })
+        .collect::<ConversionResult<Vec<_>>>()?;
+
+    if identifiers.len() == 1 {
+        return Ok(QualifiedName {
+            schema: None,
+            name: parse_sqlparser_ident(identifiers[0]),
+        });
+    }
+
+    Ok(QualifiedName {
+        schema: Some(parse_sqlparser_ident(identifiers[0])),
+        name: parse_sqlparser_ident(identifiers[1]),
+    })
+}
+
+fn parse_sqlparser_ident(ident: &sqlparser::ast::Ident) -> Ident {
+    if ident.quote_style.is_some() {
+        Ident::quoted(ident.value.clone())
+    } else {
+        Ident::unquoted(ident.value.clone())
+    }
+}
+
+fn parse_view_security(security: &CreateViewSecurity) -> ViewSecurity {
+    match security {
+        CreateViewSecurity::Definer => ViewSecurity::Definer,
+        CreateViewSecurity::Invoker => ViewSecurity::Invoker,
+    }
 }
 
 fn parse_qualified_name_token(raw: &str) -> Option<QualifiedName> {
