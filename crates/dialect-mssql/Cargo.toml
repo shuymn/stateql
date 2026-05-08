@@ -12,7 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 stateql-core = { path = "../core" }
-sqlparser = "0.61.0"
+sqlparser = "0.62.0"
 futures-util = "0.3.32"
 tiberius = { version = "0.12.3", default-features = false, features = ["rustls", "tds73"] }
 tokio = { version = "1.49.0", features = ["net", "rt", "time"] }

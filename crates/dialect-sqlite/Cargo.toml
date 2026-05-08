@@ -12,5 +12,5 @@ path = "src/lib.rs"
 
 [dependencies]
 stateql-core = { path = "../core" }
-sqlparser = "0.61.0"
+sqlparser = "0.62.0"
 rusqlite = { version = "0.38.0", features = ["bundled"] }
