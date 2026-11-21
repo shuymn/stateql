@@ -13,4 +13,4 @@ path = "src/lib.rs"
 [dependencies]
 stateql-core = { path = "../core" }
 sqlparser = "0.61.0"
-mysql = "27.0.0"
+mysql = "28.0.0"
